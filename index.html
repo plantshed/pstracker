@@ -2,20 +2,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Plantshed Log</title>
     <style>
         :root { --success: #28a745; --danger: #dc3545; --primary: #1a73e8; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         
         body { 
             font-family: -apple-system, sans-serif; 
             background: #f0f2f5; margin: 0; padding: 0; 
-            height: 100vh; display: flex; flex-direction: column; 
-            overflow: hidden; 
+            height: 100vh; width: 100vw;
+            display: flex; flex-direction: column; 
+            overflow: hidden; position: fixed; /* Prevents bouncing/scrolling issues */
         }
 
-        /* FULL SCREEN OVERLAY - MUST CLICK TO START */
+        /* FULL SCREEN OVERLAY */
         #startScreen {
             position: fixed; inset: 0; background: #ffffff; z-index: 9999;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -28,33 +29,122 @@
         h2 { margin: 0 0 10px 0; color: #333; }
         label { font-weight: bold; color: #666; font-size: 0.9rem; display: block; margin-top: 15px; }
         
-        input, select { width: 100%; padding: 15px; margin-top: 5px; border: 2px solid #ddd; border-radius: 10px; font-size: 1.1rem; }
+        input, select { width: 100%; padding: 15px; margin-top: 5px; border: 2px solid #ddd; border-radius: 10px; font-size: 1.1rem; background: #fff; }
 
         .gps-status { padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; margin: 20px 0; border: 2px solid #ddd; background: #eee; }
         .ready { background: #d4edda; color: #155724; border-color: #c3e6cb; }
 
-        .footer { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding-bottom: 50px; }
+        .footer { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding-bottom: 60px; }
         .btn { height: 110px; border: none; border-radius: 20px; color: white; font-size: 1.3rem; font-weight: 800; }
         .btn-in { background: var(--success); }
         .btn-out { background: var(--danger); }
         button:disabled { opacity: 0.3; }
 
         .activate-btn { 
-            padding: 25px 50px; background: var(--primary); color: white; 
-            border: none; border-radius: 50px; font-size: 1.4rem; font-weight: bold; 
-            box-shadow: 0 10px 20px rgba(26, 115, 232, 0.3);
+            padding: 30px 60px; background: var(--primary); color: white; 
+            border: none; border-radius: 50px; font-size: 1.5rem; font-weight: bold; 
+            box-shadow: 0 10px 20px rgba(26, 115, 232, 0.4);
+            cursor: pointer;
+            z-index: 10000; /* Ensure it is on top of everything */
         }
     </style>
 </head>
 <body>
 
 <div id="startScreen">
-    <h1 style="color: var(--primary); margin-bottom: 10px;">Maintenance Log</h1>
-    <p style="color: #666; margin-bottom: 30px;">Tap to enable location tracking for this session.</p>
-    <button class="activate-btn" onclick="runGPS()">ACTIVATE APP</button>
+    <h1 style="color: var(--primary); margin-bottom: 10px;">Plantshed Log</h1>
+    <p style="color: #666; margin-bottom: 30px;">Tap to enable location tracking.</p>
+    <button class="activate-btn" onclick="runGPS()" ontouchend="runGPS()">ACTIVATE APP</button>
 </div>
 
-<div class="container">
+<div class="container" id="mainApp" style="visibility: hidden;">
     <div class="card">
         <h2>Site Entry</h2>
         <label>Worker Name</label>
+        <input type="text" id="worker" placeholder="Full Name">
+        
+        <label>Task</label>
+        <select id="task">
+            <option value="Install">Install</option>
+            <option value="Routine Maintenance">Routine Maintenance</option>
+            <option value="Audit">Audit</option>
+        </select>
+        
+        <div id="gpsBox" class="gps-status">🛰️ Awaiting GPS...</div>
+    </div>
+
+    <div class="footer">
+        <button id="inBtn" class="btn btn-in" disabled>CLOCK<br>IN</button>
+        <button id="outBtn" class="btn btn-out" disabled>CLOCK<br>OUT</button>
+    </div>
+</div>
+
+<script>
+    const SCRIPT_URL = "https://script.google.com/a/macros/plantshed.com/s/AKfycbxphdTmf2J332dzgkIkdYTMCr7f91_-bTYJ9yLGvxUVyb_imneyAAt5OQl4_17y_eji/exec";
+    let loc = null;
+    let isStarted = false;
+
+    function runGPS() {
+        if(isStarted) return;
+        isStarted = true;
+
+        // 1. Show the app, hide the screen
+        document.getElementById('startScreen').style.display = 'none';
+        document.getElementById('mainApp').style.visibility = 'visible';
+        
+        const box = document.getElementById('gpsBox');
+        box.innerText = "🛰️ SEARCHING...";
+
+        // 2. Request Location
+        navigator.geolocation.watchPosition((p) => {
+            const acc = Math.round(p.coords.accuracy);
+            loc = { lat: p.coords.latitude, lng: p.coords.longitude, acc: acc };
+            
+            if (acc <= 300) {
+                box.innerHTML = `✅ GPS READY (${acc}m)`;
+                box.className = "gps-status ready";
+                document.getElementById('inBtn').disabled = false;
+                document.getElementById('outBtn').disabled = false;
+            } else {
+                box.innerHTML = `⚠️ WEAK SIGNAL (${acc}m)...`;
+            }
+        }, (err) => {
+            alert("Location access denied. Please reset browser permissions.");
+        }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+    }
+
+    async function sendData(act) {
+        const w = document.getElementById('worker').value;
+        if(!w) return alert("Please enter your name!");
+        
+        document.getElementById('inBtn').disabled = true;
+        document.getElementById('outBtn').disabled = true;
+        document.getElementById('gpsBox').innerText = "⌛ SAVING...";
+
+        try {
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({ 
+                    worker: w, 
+                    task: document.getElementById('task').value, 
+                    action: act, 
+                    gps: `${loc.lat},${loc.lng}`, 
+                    accuracy: loc.acc + "m" 
+                })
+            });
+            alert("Recorded Successfully!");
+            location.reload();
+        } catch (e) {
+            alert("Connection error. Try again.");
+            document.getElementById('inBtn').disabled = false;
+            document.getElementById('outBtn').disabled = false;
+        }
+    }
+
+    document.getElementById('inBtn').onclick = () => sendData("CLOCK IN");
+    document.getElementById('outBtn').onclick = () => sendData("CLOCK OUT");
+</script>
+
+</body>
+</html>
