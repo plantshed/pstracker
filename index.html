@@ -7,135 +7,68 @@
     <style>
         :root { --success: #28a745; --danger: #dc3545; --primary: #1a73e8; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        
-        body { 
-            font-family: -apple-system, system-ui, sans-serif; 
-            background: #f0f2f5; margin: 0; padding: 0; 
-            height: 100vh; display: flex; flex-direction: column; 
-            overflow: hidden; 
-        }
-
-        .container { 
-            flex: 1; display: flex; flex-direction: column; 
-            padding: 20px; max-width: 500px; margin: 0 auto; width: 100%; 
-        }
-
-        .card { 
-            background: white; padding: 20px; border-radius: 18px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
-        }
-        
+        body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        .container { flex: 1; display: flex; flex-direction: column; padding: 20px; max-width: 500px; margin: 0 auto; width: 100%; }
+        .card { background: white; padding: 20px; border-radius: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { margin: 0 0 15px 0; text-align: center; color: #333; font-size: 1.5rem; }
-        
         label { font-weight: bold; color: #666; font-size: 0.85rem; display: block; margin-top: 15px; }
-        
-        input, select { 
-            width: 100%; padding: 16px; margin-top: 5px; 
-            border: 2px solid #eee; border-radius: 12px; font-size: 1.1rem; 
-            background: #fafafa; outline: none; -webkit-appearance: none;
-        }
-
-        .gps-status { 
-            margin: 20px 0; padding: 15px; border-radius: 12px; 
-            text-align: center; font-weight: bold; font-size: 1rem;
-            background: #eee; color: #666; border: 2px solid transparent;
-        }
-        .ready { background: #d4edda; color: #155724; border-color: #c3e6cb; }
-        .searching { background: #fff3cd; color: #856404; border-color: #ffeeba; }
-
-        .btn-group { 
-            margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; 
-            padding-bottom: calc(30px + env(safe-area-inset-bottom));
-        }
-
-        .btn { 
-            height: 120px; border: none; border-radius: 22px; color: white; 
-            font-size: 1.4rem; font-weight: 900; box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-            transition: transform 0.1s;
-        }
-        .btn:active { transform: scale(0.96); }
+        input, select { width: 100%; padding: 16px; margin-top: 5px; border: 2px solid #eee; border-radius: 12px; font-size: 1.1rem; background: #fafafa; outline: none; }
+        .gps-status { margin: 20px 0; padding: 15px; border-radius: 12px; text-align: center; font-weight: bold; font-size: 1rem; background: #eee; color: #666; }
+        .ready { background: #d4edda; color: #155724; border: 2px solid #c3e6cb; }
+        .footer { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
+        .btn { height: 120px; border: none; border-radius: 22px; color: white; font-size: 1.4rem; font-weight: 900; box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
         .btn-in { background: var(--success); }
         .btn-out { background: var(--danger); }
-        .btn:disabled { background: #ccc; opacity: 0.5; box-shadow: none; }
+        button:disabled { opacity: 0.5; box-shadow: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="card">
-        <h2>Field Log</h2>
-        
+        <h2>PlantShed Field Log</h2>
         <label>Worker Name</label>
-        <input type="text" id="worker" placeholder="Full Name" autocomplete="name">
-
-        <label>Task Type</label>
+        <input type="text" id="worker" placeholder="Full Name Here">
+        <label>Job Type (select correct job)</label>
         <select id="task">
             <option value="Install">Install</option>
             <option value="Routine Maintenance">Routine Maintenance</option>
             <option value="Audit">Audit</option>
         </select>
-
-        <div id="gpsBox" class="gps-status">🛰️ INITIALIZING GPS...</div>
+        <div id="gpsBox" class="gps-status">🛰️ VERIFYING LOCATION...</div>
     </div>
-
-    <div class="btn-group">
+    <div class="footer">
         <button id="inBtn" class="btn btn-in" disabled>CLOCK<br>IN</button>
         <button id="outBtn" class="btn btn-out" disabled>CLOCK<br>OUT</button>
     </div>
 </div>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/a/macros/plantshed.com/s/AKfycbxphdTmf2J332dzgkIkdYTMCr7f91_-bTYJ9yLGvxUVyb_imneyAAt5OQl4_17y_eji/exec";
-    
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxp4Wv1YVOqlCuXsYXLr7wgTySVQrOJW-Vi2T5mTQ4gwpCS8b5IT6ggbaECLNcPFya9/exec";
     let loc = null;
 
-    function startGPS() {
-        if (!navigator.geolocation) {
-            document.getElementById('gpsBox').innerText = "❌ GPS NOT SUPPORTED";
-            return;
-        }
-
-        // Options for the fastest/most reliable mobile lock
-        const options = {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-        };
-
+    window.onload = function() {
         navigator.geolocation.watchPosition((pos) => {
             const acc = Math.round(pos.coords.accuracy);
-            loc = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: acc };
-            
+            loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
             const status = document.getElementById('gpsBox');
-            // Unlock buttons at 300m for "Industrial" speed, refine as signal improves
+            
             if (acc <= 300) {
-                status.innerHTML = `✅ GPS READY (${acc}m)`;
+                status.innerHTML = `✅ LOCATION VERIFIED`;
                 status.className = "gps-status ready";
                 document.getElementById('inBtn').disabled = false;
                 document.getElementById('outBtn').disabled = false;
-            } else {
-                status.innerHTML = `⚠️ WEAK SIGNAL (${acc}m)...`;
-                status.className = "gps-status searching";
             }
-        }, (err) => {
-            document.getElementById('gpsBox').innerText = "❌ GPS BLOCKED. CHECK SETTINGS.";
-            console.error(err);
-        }, options);
-    }
+        }, null, { enableHighAccuracy: true });
+    };
 
     async function submit(action) {
         const worker = document.getElementById('worker').value.trim();
-        if (!worker) {
-            alert("Please enter your name.");
-            return;
-        }
+        if (!worker) return alert("Enter Name");
 
-        const inBtn = document.getElementById('inBtn');
-        const outBtn = document.getElementById('outBtn');
-        const box = document.getElementById('gpsBox');
-
-        inBtn.disabled = outBtn.disabled = true;
-        box.innerText = "⌛ SAVING TO LOG...";
+        document.getElementById('inBtn').disabled = true;
+        document.getElementById('outBtn').disabled = true;
+        document.getElementById('gpsBox').innerText = "⌛ SAVING...";
 
         try {
             await fetch(SCRIPT_URL, {
@@ -145,25 +78,20 @@
                     worker: worker,
                     task: document.getElementById('task').value,
                     action: action,
-                    gps: `${loc.lat},${loc.lng}`,
-                    accuracy: loc.acc + "m"
+                    gps: `${loc.lat},${loc.lng}`
                 })
             });
-            alert("Success: Recorded!");
+            alert("Success!");
             location.reload();
         } catch (e) {
-            alert("Connection Error. Try again.");
-            inBtn.disabled = false;
-            outBtn.disabled = false;
+            alert("Error. Try again.");
+            document.getElementById('inBtn').disabled = false;
+            document.getElementById('outBtn').disabled = false;
         }
     }
 
     document.getElementById('inBtn').onclick = () => submit("CLOCK IN");
     document.getElementById('outBtn').onclick = () => submit("CLOCK OUT");
-    
-    // Auto-start on page load
-    window.onload = startGPS;
 </script>
-
 </body>
 </html>
