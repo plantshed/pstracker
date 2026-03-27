@@ -78,70 +78,88 @@
     </div>
 </div>
 
-<script>
-    // --- REPLACE THIS URL WITH YOUR DEPLOYED GOOGLE SCRIPT URL ---
-    const SCRIPT_URL = "https://script.google.com/a/macros/plantshed.com/s/AKfycbxphdTmf2J332dzgkIkdYTMCr7f91_-bTYJ9yLGvxUVyb_imneyAAt5OQl4_17y_eji/exec";
-    
+const SCRIPT_URL = "https://script.google.com/a/macros/plantshed.com/s/AKfycbxphdTmf2J332dzgkIkdYTMCr7f91_-bTYJ9yLGvxUVyb_imneyAAt5OQl4_17y_eji/exec";
     let loc = null;
 
-    function startGPS() {
-        if (!navigator.geolocation) {
-            document.getElementById('gpsStatus').innerText = "❌ GPS NOT SUPPORTED";
-            return;
-        }
+    function requestGPS() {
+        const box = document.getElementById('gpsBox');
+        box.innerHTML = "🛰️ WAKING UP SENSORS...";
+        document.getElementById('permissionOverlay').style.display = 'none';
+        
+        // Settings to force a faster lock
+        const gpsOptions = {
+            enableHighAccuracy: true, 
+            timeout: 10000, // 10 seconds per attempt
+            maximumAge: 60000 // Use a location from the last minute if available
+        };
 
-        navigator.geolocation.watchPosition((pos) => {
-            const acc = Math.round(pos.coords.accuracy);
-            loc = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: acc };
+        const success = (p) => {
+            const acc = Math.round(p.coords.accuracy);
+            loc = { lat: p.coords.latitude, lng: p.coords.longitude, acc: acc };
+            const statusBox = document.getElementById('gpsBox');
             
-            const status = document.getElementById('gpsStatus');
-            if (acc <= 250) {
-                status.innerHTML = `✅ GPS READY (${acc}m)`;
-                status.className = "gps-status ready";
+            // We unlock at 300m (about 3 city blocks) to ensure speed
+            if (acc <= 300) {
+                statusBox.innerHTML = `✅ GPS READY (${acc}m)`;
+                statusBox.className = "gps-status ready";
                 document.getElementById('inBtn').disabled = false;
                 document.getElementById('outBtn').disabled = false;
             } else {
-                status.innerHTML = `⚠️ WEAK SIGNAL (${acc}m)...`;
-                status.className = "gps-status searching";
+                statusBox.innerHTML = `🛰️ SIGNAL WEAK (${acc}m)... STAY STILL`;
             }
-        }, (err) => {
-            alert("Please allow Location access in your browser settings.");
-        }, { enableHighAccuracy: true });
+        };
+
+        const error = (err) => {
+            console.warn(`ERROR(${err.code}): ${err.message}`);
+            // If high accuracy times out, try again with lower accuracy requirements
+            if (err.code === 3) {
+                box.innerHTML = "🛰️ RETRYING (POOR SIGNAL)...";
+                navigator.geolocation.getCurrentPosition(success, error, {
+                    enableHighAccuracy: false,
+                    timeout: 10000
+                });
+            } else {
+                box.innerHTML = "❌ GPS ERROR. REFRESH PAGE.";
+            }
+        };
+
+        // Start watching
+        navigator.geolocation.watchPosition(success, error, gpsOptions);
     }
 
-    async function submit(action) {
-        const worker = document.getElementById('worker').value;
-        if (!worker) return alert("Please enter your name.");
+    async function submit(act) {
+        const w = document.getElementById('worker').value;
+        if(!w) return alert("Please enter your name!");
+        
+        const inBtn = document.getElementById('inBtn');
+        const outBtn = document.getElementById('outBtn');
+        const box = document.getElementById('gpsBox');
 
-        document.getElementById('inBtn').disabled = true;
-        document.getElementById('outBtn').disabled = true;
-        document.getElementById('gpsStatus').innerText = "⌛ SAVING TO LOG...";
-
+        inBtn.disabled = outBtn.disabled = true;
+        box.innerText = "⌛ SAVING TO LOG...";
+        
         try {
-            await fetch(https://script.google.com/macros/s/AKfycbz4e6TYfhKAyugAxWoVP49lw367aLlb1t7Let1z7c0hDCb_TB-p0hImbpfB48kkDRRp/exec, {
+            await fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
-                body: JSON.stringify({
-                    worker: worker,
-                    task: document.getElementById('task').value,
-                    action: action,
-                    gps: `${loc.lat},${loc.lng}`,
-                    accuracy: loc.acc + "m"
+                body: JSON.stringify({ 
+                    worker: w, 
+                    task: document.getElementById('task').value, 
+                    action: act, 
+                    gps: `${loc.lat},${loc.lng}`, 
+                    accuracy: loc.acc + "m" 
                 })
             });
-            alert("Success: Logged!");
+            alert("Success! " + act + " Recorded.");
             location.reload();
         } catch (e) {
-            alert("Error saving log. Try again.");
-            document.getElementById('inBtn').disabled = false;
-            document.getElementById('outBtn').disabled = false;
+            alert("Connection Error. Try again.");
+            inBtn.disabled = outBtn.disabled = false;
         }
     }
 
-    document.getElementById('inBtn').onclick = () => submit("IN");
-    document.getElementById('outBtn').onclick = () => submit("OUT");
-    
-    window.onload = startGPS;
+    document.getElementById('inBtn').onclick = () => submit("CLOCK IN");
+    document.getElementById('outBtn').onclick = () => submit("CLOCK OUT");
 </script>
 
 </body>
