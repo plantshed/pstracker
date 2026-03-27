@@ -2,165 +2,59 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Field Maintenance Log</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Plantshed Log</title>
     <style>
-        :root { --success: #28a745; --danger: #dc3545; --bg: #f0f2f5; }
+        :root { --success: #28a745; --danger: #dc3545; --primary: #1a73e8; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
         body { 
-            font-family: -apple-system, system-ui, sans-serif; 
-            background: var(--bg); margin: 0; padding: 0;
-            height: 100vh; display: flex; flex-direction: column;
+            font-family: -apple-system, sans-serif; 
+            background: #f0f2f5; margin: 0; padding: 0; 
+            height: 100vh; display: flex; flex-direction: column; 
+            overflow: hidden; 
         }
 
-        .container {
-            flex: 1; display: flex; flex-direction: column;
-            padding: 20px; max-width: 500px; margin: 0 auto; width: 100%;
+        /* FULL SCREEN OVERLAY - MUST CLICK TO START */
+        #startScreen {
+            position: fixed; inset: 0; background: #ffffff; z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 40px; text-align: center;
         }
 
-        .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        .container { flex: 1; display: flex; flex-direction: column; padding: 20px; max-width: 500px; margin: 0 auto; width: 100%; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         
-        h2 { margin: 0 0 20px 0; text-align: center; color: #333; font-size: 1.6rem; }
-        
+        h2 { margin: 0 0 10px 0; color: #333; }
         label { font-weight: bold; color: #666; font-size: 0.9rem; display: block; margin-top: 15px; }
         
-        input, select { 
-            width: 100%; padding: 16px; margin-top: 8px; 
-            border: 2px solid #eee; border-radius: 12px; font-size: 1.1rem; 
-            background: #fafafa; outline: none;
-        }
+        input, select { width: 100%; padding: 15px; margin-top: 5px; border: 2px solid #ddd; border-radius: 10px; font-size: 1.1rem; }
 
-        .gps-status { 
-            margin: 20px 0; padding: 15px; border-radius: 12px; 
-            text-align: center; font-weight: bold; font-size: 1rem;
-            transition: 0.3s;
-        }
-        .searching { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-        .ready { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .gps-status { padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; margin: 20px 0; border: 2px solid #ddd; background: #eee; }
+        .ready { background: #d4edda; color: #155724; border-color: #c3e6cb; }
 
-        .btn-group { 
-            margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; 
-            padding-bottom: env(safe-area-inset-bottom, 30px);
-        }
-
-        .btn { 
-            height: 120px; border: none; border-radius: 20px; color: white; 
-            font-size: 1.4rem; font-weight: 900; box-shadow: 0 6px 12px rgba(0,0,0,0.1);
-        }
+        .footer { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding-bottom: 50px; }
+        .btn { height: 110px; border: none; border-radius: 20px; color: white; font-size: 1.3rem; font-weight: 800; }
         .btn-in { background: var(--success); }
         .btn-out { background: var(--danger); }
-        .btn:disabled { background: #ccc; opacity: 0.5; box-shadow: none; }
+        button:disabled { opacity: 0.3; }
+
+        .activate-btn { 
+            padding: 25px 50px; background: var(--primary); color: white; 
+            border: none; border-radius: 50px; font-size: 1.4rem; font-weight: bold; 
+            box-shadow: 0 10px 20px rgba(26, 115, 232, 0.3);
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="card">
-        <h2>Field Log</h2>
-        
-        <label>Worker Name</label>
-        <input type="text" id="worker" placeholder="Enter Full Name">
-
-        <label>Task Type</label>
-        <select id="task">
-            <option value="Install">Install</option>
-            <option value="Routine Maintenance">Routine Maintenance</option>
-            <option value="Audit">Audit</option>
-        </select>
-
-        <div id="gpsStatus" class="gps-status searching">🛰️ INITIALIZING GPS...</div>
-    </div>
-
-    <div class="btn-group">
-        <button id="inBtn" class="btn btn-in" disabled>CLOCK<br>IN</button>
-        <button id="outBtn" class="btn btn-out" disabled>CLOCK<br>OUT</button>
-    </div>
+<div id="startScreen">
+    <h1 style="color: var(--primary); margin-bottom: 10px;">Maintenance Log</h1>
+    <p style="color: #666; margin-bottom: 30px;">Tap to enable location tracking for this session.</p>
+    <button class="activate-btn" onclick="runGPS()">ACTIVATE APP</button>
 </div>
 
-const SCRIPT_URL = "https://script.google.com/a/macros/plantshed.com/s/AKfycbxphdTmf2J332dzgkIkdYTMCr7f91_-bTYJ9yLGvxUVyb_imneyAAt5OQl4_17y_eji/exec";
-    let loc = null;
-
-    function requestGPS() {
-        const box = document.getElementById('gpsBox');
-        box.innerHTML = "🛰️ WAKING UP SENSORS...";
-        document.getElementById('permissionOverlay').style.display = 'none';
-        
-        // Settings to force a faster lock
-        const gpsOptions = {
-            enableHighAccuracy: true, 
-            timeout: 10000, // 10 seconds per attempt
-            maximumAge: 60000 // Use a location from the last minute if available
-        };
-
-        const success = (p) => {
-            const acc = Math.round(p.coords.accuracy);
-            loc = { lat: p.coords.latitude, lng: p.coords.longitude, acc: acc };
-            const statusBox = document.getElementById('gpsBox');
-            
-            // We unlock at 300m (about 3 city blocks) to ensure speed
-            if (acc <= 300) {
-                statusBox.innerHTML = `✅ GPS READY (${acc}m)`;
-                statusBox.className = "gps-status ready";
-                document.getElementById('inBtn').disabled = false;
-                document.getElementById('outBtn').disabled = false;
-            } else {
-                statusBox.innerHTML = `🛰️ SIGNAL WEAK (${acc}m)... STAY STILL`;
-            }
-        };
-
-        const error = (err) => {
-            console.warn(`ERROR(${err.code}): ${err.message}`);
-            // If high accuracy times out, try again with lower accuracy requirements
-            if (err.code === 3) {
-                box.innerHTML = "🛰️ RETRYING (POOR SIGNAL)...";
-                navigator.geolocation.getCurrentPosition(success, error, {
-                    enableHighAccuracy: false,
-                    timeout: 10000
-                });
-            } else {
-                box.innerHTML = "❌ GPS ERROR. REFRESH PAGE.";
-            }
-        };
-
-        // Start watching
-        navigator.geolocation.watchPosition(success, error, gpsOptions);
-    }
-
-    async function submit(act) {
-        const w = document.getElementById('worker').value;
-        if(!w) return alert("Please enter your name!");
-        
-        const inBtn = document.getElementById('inBtn');
-        const outBtn = document.getElementById('outBtn');
-        const box = document.getElementById('gpsBox');
-
-        inBtn.disabled = outBtn.disabled = true;
-        box.innerText = "⌛ SAVING TO LOG...";
-        
-        try {
-            await fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: JSON.stringify({ 
-                    worker: w, 
-                    task: document.getElementById('task').value, 
-                    action: act, 
-                    gps: `${loc.lat},${loc.lng}`, 
-                    accuracy: loc.acc + "m" 
-                })
-            });
-            alert("Success! " + act + " Recorded.");
-            location.reload();
-        } catch (e) {
-            alert("Connection Error. Try again.");
-            inBtn.disabled = outBtn.disabled = false;
-        }
-    }
-
-    document.getElementById('inBtn').onclick = () => submit("CLOCK IN");
-    document.getElementById('outBtn').onclick = () => submit("CLOCK OUT");
-</script>
-
-</body>
-</html>
+<div class="container">
+    <div class="card">
+        <h2>Site Entry</h2>
+        <label>Worker Name</label>
