@@ -1,0 +1,23 @@
+{
+  "name": "PlantShed Field Log",
+  "short_name": "PS Log",
+  "description": "Field check-in system for PlantShed teams.",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#404041",
+  "theme_color": "#404041",
+  "orientation": "portrait"
+}
