@@ -138,7 +138,7 @@
             loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
             const status = document.getElementById('gpsBox');
             
-            if (acc <= 300) {
+            if (acc <= 100) {
                 status.innerHTML = `✅ LOCATION VERIFIED`;
                 status.className = "gps-status ready";
                 document.getElementById('inBtn').disabled = false;
