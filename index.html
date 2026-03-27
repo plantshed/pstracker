@@ -55,4 +55,115 @@
         }
         .btn:active { transform: scale(0.96); }
         .btn-in { background: var(--success); }
-        .btn-out { background
+        .btn-out { background: var(--danger); }
+        .btn:disabled { background: #ccc; opacity: 0.5; box-shadow: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h2>Field Log</h2>
+        
+        <label>Worker Name</label>
+        <input type="text" id="worker" placeholder="Full Name" autocomplete="name">
+
+        <label>Task Type</label>
+        <select id="task">
+            <option value="Install">Install</option>
+            <option value="Routine Maintenance">Routine Maintenance</option>
+            <option value="Audit">Audit</option>
+        </select>
+
+        <div id="gpsBox" class="gps-status">🛰️ INITIALIZING GPS...</div>
+    </div>
+
+    <div class="btn-group">
+        <button id="inBtn" class="btn btn-in" disabled>CLOCK<br>IN</button>
+        <button id="outBtn" class="btn btn-out" disabled>CLOCK<br>OUT</button>
+    </div>
+</div>
+
+<script>
+    const SCRIPT_URL = "https://script.google.com/a/macros/plantshed.com/s/AKfycbxphdTmf2J332dzgkIkdYTMCr7f91_-bTYJ9yLGvxUVyb_imneyAAt5OQl4_17y_eji/exec";
+    
+    let loc = null;
+
+    function startGPS() {
+        if (!navigator.geolocation) {
+            document.getElementById('gpsBox').innerText = "❌ GPS NOT SUPPORTED";
+            return;
+        }
+
+        // Options for the fastest/most reliable mobile lock
+        const options = {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        };
+
+        navigator.geolocation.watchPosition((pos) => {
+            const acc = Math.round(pos.coords.accuracy);
+            loc = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: acc };
+            
+            const status = document.getElementById('gpsBox');
+            // Unlock buttons at 300m for "Industrial" speed, refine as signal improves
+            if (acc <= 300) {
+                status.innerHTML = `✅ GPS READY (${acc}m)`;
+                status.className = "gps-status ready";
+                document.getElementById('inBtn').disabled = false;
+                document.getElementById('outBtn').disabled = false;
+            } else {
+                status.innerHTML = `⚠️ WEAK SIGNAL (${acc}m)...`;
+                status.className = "gps-status searching";
+            }
+        }, (err) => {
+            document.getElementById('gpsBox').innerText = "❌ GPS BLOCKED. CHECK SETTINGS.";
+            console.error(err);
+        }, options);
+    }
+
+    async function submit(action) {
+        const worker = document.getElementById('worker').value.trim();
+        if (!worker) {
+            alert("Please enter your name.");
+            return;
+        }
+
+        const inBtn = document.getElementById('inBtn');
+        const outBtn = document.getElementById('outBtn');
+        const box = document.getElementById('gpsBox');
+
+        inBtn.disabled = outBtn.disabled = true;
+        box.innerText = "⌛ SAVING TO LOG...";
+
+        try {
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({
+                    worker: worker,
+                    task: document.getElementById('task').value,
+                    action: action,
+                    gps: `${loc.lat},${loc.lng}`,
+                    accuracy: loc.acc + "m"
+                })
+            });
+            alert("Success: Recorded!");
+            location.reload();
+        } catch (e) {
+            alert("Connection Error. Try again.");
+            inBtn.disabled = false;
+            outBtn.disabled = false;
+        }
+    }
+
+    document.getElementById('inBtn').onclick = () => submit("CLOCK IN");
+    document.getElementById('outBtn').onclick = () => submit("CLOCK OUT");
+    
+    // Auto-start on page load
+    window.onload = startGPS;
+</script>
+
+</body>
+</html>
