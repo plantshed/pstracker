@@ -25,24 +25,16 @@
             overflow: hidden; 
         }
 
-        /* SPLASH SCREEN STYLES */
+        /* SPLASH SCREEN - DARK BG */
         #splash {
-            position: fixed;
-            inset: 0;
-            background: #404041;
-            z-index: 10001;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: fixed; inset: 0; background: #404041; z-index: 10001;
+            display: flex; align-items: center; justify-content: center;
             transition: opacity 0.5s ease-out, visibility 0.5s;
         }
-        #splash svg {
-            width: 80%;
-            max-width: 400px;
-            height: auto;
-        }
+        #splash svg { width: 75%; max-width: 300px; height: auto; }
         .hide-splash { opacity: 0; visibility: hidden; }
 
+        /* CONTAINER WITH 100PX BUFFER */
         .container { 
             flex: 1; 
             display: flex; 
@@ -51,32 +43,18 @@
             max-width: 500px; 
             margin: 0 auto; 
             width: 100%; 
-            /* This adds the 100px buffer to the bottom of the whole scroll area */
             padding-bottom: calc(100px + env(safe-area-inset-bottom)); 
         }
 
-        .logo-container {
-            text-align: center; padding: 20px 0; flex-shrink: 0;
-            display: flex; justify-content: center; align-items: center;
-        }
-        
+        .logo-container { text-align: center; padding: 20px 0; display: flex; justify-content: center; align-items: center; }
         .logo-container svg { height: 50px; width: auto; max-width: 90%; display: block; }
 
         .card { background: white; padding: 20px; border-radius: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { margin: 0 0 10px 0; text-align: center; color: #404041; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
         label { font-weight: bold; color: #666; font-size: 0.8rem; display: block; margin-top: 12px; text-transform: uppercase; }
-        
-        input, select { 
-            width: 100%; padding: 14px; margin-top: 5px; 
-            border: 2px solid #eee; border-radius: 12px; font-size: 1.1rem; 
-            background: #fafafa; outline: none; color: #333;
-        }
+        input, select { width: 100%; padding: 14px; margin-top: 5px; border: 2px solid #eee; border-radius: 12px; font-size: 1.1rem; background: #fafafa; outline: none; }
 
-        .gps-status { 
-            margin: 15px 0; padding: 12px; border-radius: 12px; 
-            text-align: center; font-weight: bold; font-size: 0.9rem;
-            background: #eee; color: #666; border: 2px solid transparent;
-        }
+        .gps-status { margin: 15px 0; padding: 12px; border-radius: 12px; text-align: center; font-weight: bold; font-size: 0.9rem; background: #eee; color: #666; }
         .ready { background: #d4edda; color: #155724; border: 2px solid #c3e6cb; }
 
         .footer { 
@@ -84,13 +62,12 @@
             display: grid; 
             grid-template-columns: 1fr 1fr; 
             gap: 12px; 
-            /* Removed old padding from here to keep buttons aligned with container */
         }
-
+        
         .btn { height: 110px; border: none; border-radius: 22px; color: white; font-size: 1.3rem; font-weight: 900; box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
         .btn-in { background: var(--success); }
         .btn-out { background: var(--danger); }
-        button:disabled { opacity: 0.5; box-shadow: none; }
+        button:disabled { opacity: 0.5; }
     </style>
 </head>
 <body>
