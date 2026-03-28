@@ -155,16 +155,34 @@
 </div>
 
 <script>
-    // Force refresh logic
-window.addEventListener('load', function() {
-    if (navigator.serviceWorker) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            for(let registration of registrations) {
-                registration.update();
-            }
-        });
+    
+    document.addEventListener("visibilitychange", function() {
+    if (document.visibilityState === "visible") {
+        checkServerForUpdates();
     }
 });
+
+function checkServerForUpdates() {
+    
+    fetch("manifest.json?nocache=" + new Date().getTime(), { method: 'HEAD' })
+        .then(response => {
+            const lastModified = response.headers.get("Last-Modified");
+            const cachedModified = localStorage.getItem("last_update");
+
+            if (cachedModified && lastModified !== cachedModified) {
+                localStorage.setItem("last_update", lastModified);
+              
+                window.location.reload(true); 
+            } else {
+                localStorage.setItem("last_update", lastModified);
+            }
+        })
+        .catch(err => console.log("Offline or check failed"));
+}
+
+// Run once on initial load
+checkServerForUpdates();
+    
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxp4Wv1YVOqlCuXsYXLr7wgTySVQrOJW-Vi2T5mTQ4gwpCS8b5IT6ggbaECLNcPFya9/exec";
     
     let loc = null;
