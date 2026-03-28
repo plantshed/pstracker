@@ -15,7 +15,7 @@
     <meta name="theme-color" content="#404041">
 
     <style>
-        :root { --success: #28a745; --danger: #dc3545; --primary: #404041; }
+        :root { --success: #6fa877; --danger: #bd5c66; --primary: #404041; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
         body { 
@@ -39,7 +39,7 @@
 
     #splash svg { 
         /* Use a percentage for the width so it never "breaks" the screen */
-        width: 80%; 
+        width: 85%; 
         height: auto;
         max-width: 300px; /* Adjust this to your preferred "max px" */
         display: block;
@@ -77,7 +77,7 @@
             gap: 12px; 
         }
         
-        .btn { height: 110px; border: none; border-radius: 22px; color: white; font-size: 1.3rem; font-weight: 900; box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
+        .btn { height: 110px; border: none; border-radius: 18px; color: white; font-size: 1.3rem; font-weight: 900; box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
         .btn-in { background: var(--success); }
         .btn-out { background: var(--danger); }
         button:disabled { opacity: 0.5; }
@@ -138,19 +138,19 @@
         <label>Worker Name</label>
         <input type="text" id="worker" placeholder="Full Name" spellcheck="false">
 
-        <label>Task Type</label>
+        <label>Select Job Type</label>
         <select id="task">
             <option value="Install">Install</option>
             <option value="Routine Maintenance">Routine Maintenance</option>
             <option value="Audit">Audit</option>
         </select>
 
-        <div id="gpsBox" class="gps-status">🛰️ VERIFYING LOCATION...</div>
+        <div id="gpsBox" class="gps-status">🛰️ Verifying location...</div>
     </div>
 
     <div class="footer">
-        <button id="inBtn" class="btn btn-in" disabled>CLOCK<br>IN</button>
-        <button id="outBtn" class="btn btn-out" disabled>CLOCK<br>OUT</button>
+        <button id="inBtn" class="btn btn-in" disabled>Check In</button>
+        <button id="outBtn" class="btn btn-out" disabled>Check Out</button>
     </div>
 </div>
 
@@ -168,7 +168,7 @@
 
     window.onload = function() {
         if (!navigator.geolocation) {
-            document.getElementById('gpsBox').innerText = "❌ GPS NOT SUPPORTED";
+            document.getElementById('gpsBox').innerText = "❌ GPS not supported. Please refresh.";
             return;
         }
 
@@ -179,7 +179,7 @@
             
             // Unlocks at 150m accuracy
             if (acc <= 150) {
-                status.innerHTML = `✅ LOCATION VERIFIED`;
+                status.innerHTML = `✅ Location verified`;
                 status.className = "gps-status ready";
                 document.getElementById('inBtn').disabled = false;
                 document.getElementById('outBtn').disabled = false;
@@ -187,7 +187,7 @@
                 status.innerHTML = `🛰️ SEARCHING... (${acc}m)`;
             }
         }, (err) => {
-            document.getElementById('gpsBox').innerText = "❌ GPS BLOCKED. ALLOW IN SETTINGS.";
+            document.getElementById('gpsBox').innerText = "❌ GPS blocked! Please allow in settings.";
         }, { enableHighAccuracy: true });
     };
 
@@ -222,8 +222,8 @@
         }
     }
 
-    document.getElementById('inBtn').onclick = () => submit("CLOCK IN");
-    document.getElementById('outBtn').onclick = () => submit("CLOCK OUT");
+    document.getElementById('inBtn').onclick = () => submit("Checked In");
+    document.getElementById('outBtn').onclick = () => submit("Checked Out");
 </script>
 
 </body>
