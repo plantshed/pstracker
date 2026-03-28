@@ -20,7 +20,7 @@
         
         body { 
             font-family: -apple-system, sans-serif; 
-            background: #f0f2f5; margin: 0; padding: 0; 
+            background: #f2f2f2; margin: 0; padding: 0; 
             height: 100vh; display: flex; flex-direction: column; 
             overflow: hidden; 
         }
@@ -228,7 +228,7 @@ checkServerForUpdates();
         const box = document.getElementById('gpsBox');
 
         inBtn.disabled = outBtn.disabled = true;
-        box.innerText = "⌛ SAVING...";
+        box.innerText = "Logging...";
 
         try {
             await fetch(SCRIPT_URL, {
