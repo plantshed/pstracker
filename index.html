@@ -50,7 +50,11 @@
         .card { background: white; padding: 20px; border-radius: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { margin: 0 0 10px 0; text-align: center; color: var(--primary); font-size: 1.1rem; font-weight: 600; }
         label { font-weight: bold; color: #666; font-size: 0.9rem; display: block; margin-top: 12px; }
-        
+        #addressDisplay {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        }
         select, input { 
             width: 100%; padding: 14px; margin-top: 5px; border: 2px solid #eee; 
             border-radius: 12px; font-size: 1rem; background: #fafafa; outline: none; 
@@ -89,10 +93,12 @@
             </select>
         </div>
 
-        <label>Account & Site Address</label>
-        <select id="site">
-            <option value="" disabled selected>Waiting for GPS...</option>
-        </select>
+    <label>Account & Site Address</label>
+    <select id="site">
+        <option value="" disabled selected>Waiting for GPS...</option>
+    </select>
+
+    <div id="addressDisplay" style="font-size: 11px; color: #888; margin-top: 6px; padding: 0 5px; min-height: 14px; font-style: italic;"></div>
 
         <label>Job Type</label>
         <select id="task">
@@ -218,12 +224,15 @@
             siteSelect.appendChild(prompt);
 
             nearby.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.account + "|" + c.address;
-                opt.innerText = c.account;
-                if (opt.value === currentSelection) opt.selected = true;
-                siteSelect.appendChild(opt);
-            });
+        const opt = document.createElement('option');
+        opt.value = c.account + "|" + c.address; // Keep this the same for the script!
+    
+        // CHANGE THIS LINE: Just show the account name
+        opt.innerText = c.account; 
+    
+    if (opt.value === currentSelection) opt.selected = true;
+    siteSelect.appendChild(opt);
+});
         }
     }
 
@@ -272,6 +281,17 @@
 
     document.getElementById('inBtn').onclick = () => submit("CLOCK IN");
     document.getElementById('outBtn').onclick = () => submit("CLOCK OUT");
+    document.getElementById('site').addEventListener('change', function() {
+    const val = this.value; // This is "Account Name|123 Main St"
+    const display = document.getElementById('addressDisplay');
+    
+    if (val && val.includes("|")) {
+        const address = val.split("|")[1]; // Grab everything after the |
+        display.innerHTML = "📍 " + address;
+    } else {
+        display.innerHTML = ""; // Clear if nothing is selected
+    }
+});
 </script>
 </body>
 </html>
