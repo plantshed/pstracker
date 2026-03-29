@@ -1,6 +1,7 @@
 {
   "name": "PlantShed Field Log",
   "short_name": "PS Log",
+  "version": "1.2",
   "description": "Field check-in system for PlantShed teams.",
   "icons": [
     {
@@ -15,7 +16,7 @@
       "type": "image/png"
     }
   ],
-  "start_url": "index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#404041",
   "theme_color": "#404041",
