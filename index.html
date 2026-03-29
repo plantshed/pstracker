@@ -24,13 +24,12 @@
             overflow: hidden; 
         }
 
-        /* Splash Screen */
         #splash {
             position: fixed; inset: 0; background: #FFFFFF; z-index: 10001;
             display: flex; align-items: center; justify-content: center;
-            transition: opacity 0.25s ease-out, visibility 0.25s;
+            transition: opacity 0.5s ease-out, visibility 0.5s;
         }
-        #splash svg { width: 85%; height: auto; max-width: 360px; display: block; }
+        #splash img { width: 85%; height: auto; max-width: 360px; display: block; }
         .hide-splash { opacity: 0; visibility: hidden; }
 
         .container { 
@@ -46,13 +45,7 @@
             justify-content: center; 
             align-items: center; 
         }
-        .logo-container img { 
-            height: 50px; 
-            width: auto; 
-            max-width: 90%; 
-            display: block; 
-        }
-    
+        .logo-container img { height: 60px; width: auto; max-width: 90%; display: block; }
 
         .card { background: white; padding: 20px; border-radius: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { margin: 0 0 10px 0; text-align: center; color: var(--primary); font-size: 1.1rem; font-weight: 600; }
@@ -78,12 +71,12 @@
 <body>
 
 <div id="splash">
-    <img src="pslogo.svg" alt="PlantShed Logo" style="width: 85%; max-width: 360px; height: auto;">
+    <img src="pslogo.svg" alt="PlantShed Logo">
 </div>
     
 <div class="container">
     <div class="logo-container">
-        <img src="pslogo.svg" alt="PlantShed Logo" style="height: 60px; width: auto; max-width: 90%;">
+        <img src="pslogo.svg" alt="PlantShed Logo">
     </div>
 
     <div class="card">
@@ -92,13 +85,13 @@
         <div id="workerArea">
             <label>Employee Name</label>
             <select id="worker">
-                <option value="" disabled selected>Select Name</option>
+                <option value="" disabled selected>Loading Employees...</option>
             </select>
         </div>
 
         <label>Account & Site Address</label>
         <select id="site">
-            <option value="" disabled selected>Select Client</option>
+            <option value="" disabled selected>Waiting for GPS...</option>
         </select>
 
         <label>Job Type</label>
@@ -120,106 +113,59 @@
 </div>
 
 <script>
-// --- 1. THE AUTO-REFRESH TIMER (Every 30 Minutes) ---
-// This ensures if the app is left open on a counter, it stays fresh.
-setInterval(checkServerForUpdates, 1800000); // 1,800,000ms = 30 min
-
-// --- 2. THE RESUME LISTENER ---
-// Triggers when they switch back to the app or unlock their phone.
-document.addEventListener("visibilitychange", function() {
-    if (document.visibilityState === "visible") {
-        checkServerForUpdates();
-    }
-});
-
-async function checkServerForUpdates() {
-    try {
-        // Use a unique timestamp in the URL to bypass the phone's local cache entirely
-        const versionCheckUrl = "manifest.json?v=" + new Date().getTime();
-        
-        const response = await fetch(versionCheckUrl, { method: 'GET', cache: 'no-store' });
-        const lastModified = response.headers.get("Last-Modified");
-        const cachedModified = localStorage.getItem("last_update");
-
-        // If the GitHub file is newer than what we have saved...
-        if (cachedModified && lastModified !== cachedModified) {
-            console.log("New version detected. Force reloading...");
-            localStorage.setItem("last_update", lastModified);
-            
-            // THE NUCLEAR OPTION: Redirect to a URL with a unique version ID.
-            // This kills the old cache and forces a 100% fresh download.
-            window.location.href = window.location.origin + window.location.pathname + "?update=" + new Date().getTime();
-        } else {
-            localStorage.setItem("last_update", lastModified);
-        }
-    } catch (err) {
-        console.log("Update check skipped (Offline)");
-    }
-}
-
-// --- 3. THE INITIAL BOOT CHECK ---
-checkServerForUpdates();
-    
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby0oeKCuEiXxaGYWkQXAe3Fg65g5t3dqpUSW7jLNXuPFayH4GaaDoyTgx7wRGCwFv9h/exec";
     let loc = null;
     let clientList = [];
 
-    // --- 1. INITIAL LOAD ---
+    // --- REFRESH LOGIC ---
+    setInterval(checkServerForUpdates, 1800000);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkServerForUpdates(); });
+
+    async function checkServerForUpdates() {
+        try {
+            const versionCheckUrl = "manifest.json?v=" + new Date().getTime();
+            const response = await fetch(versionCheckUrl, { method: 'GET', cache: 'no-store' });
+            const lastModified = response.headers.get("Last-Modified");
+            const cachedModified = localStorage.getItem("last_update");
+            if (cachedModified && lastModified !== cachedModified) {
+                localStorage.setItem("last_update", lastModified);
+                window.location.href = window.location.origin + window.location.pathname + "?update=" + new Date().getTime();
+            } else {
+                localStorage.setItem("last_update", lastModified);
+            }
+        } catch (err) { console.log("Update check skipped"); }
+    }
+    checkServerForUpdates();
+
+    // --- INITIAL LOAD ---
     window.onload = async function() {
-        // Splash screen fade
         setTimeout(() => document.getElementById('splash').classList.add('hide-splash'), 1500);
-
-        // Load Employee & Client Data from Google Sheets (via doGet)
-        loadData();
-
-        // Check for "Remembered" User
-        const savedUser = localStorage.getItem('ps_user');
-        if (savedUser) {
-            document.getElementById('greeting').innerText = "Hello, " + savedUser;
-            // We'll auto-select the dropdown once data arrives
-        }
-
-        // Start GPS
+        await loadData();
         initGPS();
     };
 
-   async function loadData() {
-    try {
-        const response = await fetch(SCRIPT_URL);
-        const data = await response.json();
-        
-        // 1. Still populate Employees as normal
-        const workerSelect = document.getElementById('worker');
-        workerSelect.innerHTML = '<option value="" disabled selected>Select Name</option>';
-        data.employees.forEach(name => {
-            const opt = document.createElement('option');
-            opt.value = opt.innerText = name;
-            workerSelect.appendChild(opt);
-        });
+    async function loadData() {
+        try {
+            const response = await fetch(SCRIPT_URL);
+            const data = await response.json();
+            
+            const workerSelect = document.getElementById('worker');
+            workerSelect.innerHTML = '<option value="" disabled selected>Select Name</option>';
+            data.employees.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = opt.innerText = name;
+                workerSelect.appendChild(opt);
+            });
 
-        // 2. SAVE the client data to our master variable
-        clientList = data.clients; 
+            clientList = data.clients; 
 
-        // 3. DO NOT populate the siteSelect here anymore. 
-        // We let the updateNearbySites() function handle it based on GPS.
-        const siteSelect = document.getElementById('site');
-        siteSelect.innerHTML = '<option value="" disabled selected>Waiting for GPS...</option>';
-
-        const savedUser = localStorage.getItem('ps_user');
-        if (savedUser) workerSelect.value = savedUser;
-
-    } catch (e) {
-        console.error("Load failed", e);
-    }
-}
+            const savedUser = localStorage.getItem('ps_user');
+            if (savedUser) workerSelect.value = savedUser;
+        } catch (e) { console.error("Load failed", e); }
     }
 
-    // --- GLOBAL VARIABLES ---
-    let loc = null;
-    let clientList = []; // This will hold the full list from Google Sheets
-    
     function getDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371e3; // Earth's radius in meters
+        const R = 6371e3;
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
         const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -227,7 +173,7 @@ checkServerForUpdates();
                   Math.sin(dLon / 2) * Math.sin(dLon / 2);
         return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
     }
-    
+
     function initGPS() {
         navigator.geolocation.watchPosition((pos) => {
             const acc = Math.round(pos.coords.accuracy);
@@ -239,114 +185,56 @@ checkServerForUpdates();
                 status.className = "gps-status ready";
                 document.getElementById('inBtn').disabled = false;
                 document.getElementById('outBtn').disabled = false;
-                
-                // NEW: Every time location updates, refresh the nearby sites list
                 updateNearbySites(); 
             } else {
                 status.innerHTML = `🛰️ Searching... (${acc}m)`;
-                // Keep buttons disabled if accuracy is too low for a reliable geofence
                 document.getElementById('inBtn').disabled = true;
                 document.getElementById('outBtn').disabled = true;
             }
         }, (err) => {
             document.getElementById('gpsBox').innerText = "❌ GPS blocked! Check settings.";
-        }, { 
-            enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 10000 
-        });
+        }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
     }
 
     function updateNearbySites() {
-    // Only run if we have a location AND the client list has loaded from the sheet
-    if (!loc || !clientList || clientList.length === 0) return;
-
-    const siteSelect = document.getElementById('site');
-    const currentSelection = siteSelect.value; // Remember what they picked if they already did
-    
-    // Filter the master list
-    const nearby = clientList.filter(site => {
-        const dist = getDistance(loc.lat, loc.lng, site.lat, site.lng);
-        return dist <= 150; // 150 meters
-    });
-
-    // Update the Dropdown UI
-    siteSelect.innerHTML = ''; // Clear old options
-    
-    if (nearby.length === 0) {
-        const opt = document.createElement('option');
-        opt.innerText = "No sites found nearby.";
-        opt.disabled = true;
-        opt.selected = true;
-        siteSelect.appendChild(opt);
-    } else {
-        // Add a default prompt
-        const prompt = document.createElement('option');
-        prompt.innerText = "Select Nearby Client";
-        prompt.disabled = true;
-        prompt.selected = !currentSelection;
-        siteSelect.appendChild(prompt);
-
-        nearby.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c.account + "|" + c.address;
-            opt.innerText = c.account;
-            // Keep the item selected if they already clicked it
-            if (opt.value === currentSelection) opt.selected = true;
-            siteSelect.appendChild(opt);
+        if (!loc || !clientList || clientList.length === 0) return;
+        const siteSelect = document.getElementById('site');
+        const currentSelection = siteSelect.value;
+        
+        const nearby = clientList.filter(site => {
+            return getDistance(loc.lat, loc.lng, site.lat, site.lng) <= 150;
         });
+
+        siteSelect.innerHTML = '';
+        if (nearby.length === 0) {
+            const opt = document.createElement('option');
+            opt.innerText = "No sites found nearby.";
+            opt.disabled = true; opt.selected = true;
+            siteSelect.appendChild(opt);
+        } else {
+            const prompt = document.createElement('option');
+            prompt.innerText = "Select Nearby Client";
+            prompt.disabled = true; prompt.selected = !currentSelection;
+            siteSelect.appendChild(prompt);
+
+            nearby.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.account + "|" + c.address;
+                opt.innerText = c.account;
+                if (opt.value === currentSelection) opt.selected = true;
+                siteSelect.appendChild(opt);
+            });
+        }
     }
-}
 
     async function submit(action) {
         const worker = document.getElementById('worker').value;
         const siteRaw = document.getElementById('site').value;
         const task = document.getElementById('task').value;
 
-        if (!worker || !siteRaw) return alert("Select Name and Account.");
+        if (!worker || !siteRaw || siteRaw.includes("No sites")) {
+            return alert("Please select your Name and a valid Site.");
+        }
 
-        // Split Account and Address
         const [account, siteAddress] = siteRaw.split("|");
-
-        // UI Feedback
-        document.getElementById('gpsBox').innerText = "⌛ Logging...";
-        document.getElementById('inBtn').disabled = true;
-        document.getElementById('outBtn').disabled = true;
-
-        try {
-            // Save user to device memory
-            localStorage.setItem('ps_user', worker);
-
-            await fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: JSON.stringify({
-                    worker: worker,
-                    account: account,
-                    siteAddress: siteAddress,
-                    task: task,
-                    action: action,
-                    gps: `${loc.lat},${loc.lng}`
-                })
-            });
-
-            alert("Logged Successfully!");
-            location.reload();
-        } catch (e) {
-            alert("Error saving log.");
-            location.reload();
-        }
-    }
-
-    function resetUser() {
-        if (confirm("Reset device memory?")) {
-            localStorage.removeItem('ps_user');
-            location.reload();
-        }
-    }
-
-    document.getElementById('inBtn').onclick = () => submit("CLOCK IN");
-    document.getElementById('outBtn').onclick = () => submit("CLOCK OUT");
-</script>
-</body>
-</html>
+        document.getElementById('gpsBox').innerText =
