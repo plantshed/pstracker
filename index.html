@@ -87,18 +87,18 @@
     </div>
 
     <div class="card">
-        <h2 id="greeting">Field Log</h2>
+        <h2 id="greeting">Maintenance Field Log</h2>
         
         <div id="workerArea">
             <label>Employee Name</label>
             <select id="worker">
-                <option value="" disabled selected>Loading staff...</option>
+                <option value="" disabled selected>Select Name</option>
             </select>
         </div>
 
         <label>Account & Site Address</label>
         <select id="site">
-            <option value="" disabled selected>Loading clients...</option>
+            <option value="" disabled selected>Select Client</option>
         </select>
 
         <label>Job Type</label>
@@ -112,8 +112,8 @@
     </div>
 
     <div class="footer">
-        <button id="inBtn" class="btn btn-in" disabled>Clock In</button>
-        <button id="outBtn" class="btn btn-out" disabled>Clock Out</button>
+        <button id="inBtn" class="btn btn-in" disabled>Check In</button>
+        <button id="outBtn" class="btn btn-out" disabled>Check Out</button>
     </div>
 
     <div id="resetLink" onclick="resetUser()">Switch User / Reset Device</div>
@@ -150,7 +150,7 @@
             
             // Populate Employees
             const workerSelect = document.getElementById('worker');
-            workerSelect.innerHTML = '<option value="" disabled selected>-- Select Name --</option>';
+            workerSelect.innerHTML = '<option value="" disabled selected>Select Name</option>';
             data.employees.forEach(name => {
                 const opt = document.createElement('option');
                 opt.value = opt.innerText = name;
@@ -159,7 +159,7 @@
 
             // Populate Clients (Formatted with Address)
             const siteSelect = document.getElementById('site');
-            siteSelect.innerHTML = '<option value="" disabled selected>-- Select Account --</option>';
+            siteSelect.innerHTML = '<option value="" disabled selected>Select Account</option>';
             clientList = data.clients;
             data.clients.forEach(c => {
                 const opt = document.createElement('option');
