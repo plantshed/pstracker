@@ -237,4 +237,41 @@
         }
 
         const [account, siteAddress] = siteRaw.split("|");
-        document.getElementById('gpsBox').innerText =
+        document.getElementById('gpsBox').innerText = "⌛ Logging...";
+        document.getElementById('inBtn').disabled = true;
+        document.getElementById('outBtn').disabled = true;
+
+        try {
+            localStorage.setItem('ps_user', worker);
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({
+                    worker: worker,
+                    account: account,
+                    siteAddress: siteAddress,
+                    task: task,
+                    action: action,
+                    gps: `${loc.lat},${loc.lng}`
+                })
+            });
+            alert("Logged Successfully!");
+            location.reload();
+        } catch (e) {
+            alert("Error saving log.");
+            location.reload();
+        }
+    }
+
+    function resetUser() {
+        if (confirm("Reset device memory?")) {
+            localStorage.removeItem('ps_user');
+            location.reload();
+        }
+    }
+
+    document.getElementById('inBtn').onclick = () => submit("CLOCK IN");
+    document.getElementById('outBtn').onclick = () => submit("CLOCK OUT");
+</script>
+</body>
+</html>
