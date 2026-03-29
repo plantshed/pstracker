@@ -120,7 +120,47 @@
 </div>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxp4Wv1YVOqlCuXsYXLr7wgTySVQrOJW-Vi2T5mTQ4gwpCS8b5IT6ggbaECLNcPFya9/exec";
+// --- 1. THE AUTO-REFRESH TIMER (Every 30 Minutes) ---
+// This ensures if the app is left open on a counter, it stays fresh.
+setInterval(checkServerForUpdates, 1800000); // 1,800,000ms = 30 min
+
+// --- 2. THE RESUME LISTENER ---
+// Triggers when they switch back to the app or unlock their phone.
+document.addEventListener("visibilitychange", function() {
+    if (document.visibilityState === "visible") {
+        checkServerForUpdates();
+    }
+});
+
+async function checkServerForUpdates() {
+    try {
+        // Use a unique timestamp in the URL to bypass the phone's local cache entirely
+        const versionCheckUrl = "manifest.json?v=" + new Date().getTime();
+        
+        const response = await fetch(versionCheckUrl, { method: 'GET', cache: 'no-store' });
+        const lastModified = response.headers.get("Last-Modified");
+        const cachedModified = localStorage.getItem("last_update");
+
+        // If the GitHub file is newer than what we have saved...
+        if (cachedModified && lastModified !== cachedModified) {
+            console.log("New version detected. Force reloading...");
+            localStorage.setItem("last_update", lastModified);
+            
+            // THE NUCLEAR OPTION: Redirect to a URL with a unique version ID.
+            // This kills the old cache and forces a 100% fresh download.
+            window.location.href = window.location.origin + window.location.pathname + "?update=" + new Date().getTime();
+        } else {
+            localStorage.setItem("last_update", lastModified);
+        }
+    } catch (err) {
+        console.log("Update check skipped (Offline)");
+    }
+}
+
+// --- 3. THE INITIAL BOOT CHECK ---
+checkServerForUpdates();
+    
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby0oeKCuEiXxaGYWkQXAe3Fg65g5t3dqpUSW7jLNXuPFayH4GaaDoyTgx7wRGCwFv9h/exec";
     let loc = null;
     let clientList = [];
 
@@ -159,7 +199,7 @@
 
             // Populate Clients (Formatted with Address)
             const siteSelect = document.getElementById('site');
-            siteSelect.innerHTML = '<option value="" disabled selected>Select Account</option>';
+            siteSelect.innerHTML = '<option value="" disabled selected>Select Client</option>';
             clientList = data.clients;
             data.clients.forEach(c => {
                 const opt = document.createElement('option');
