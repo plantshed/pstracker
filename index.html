@@ -28,7 +28,7 @@
         #splash {
             position: fixed; inset: 0; background: #FFFFFF; z-index: 10001;
             display: flex; align-items: center; justify-content: center;
-            transition: opacity 0.5s ease-out, visibility 0.5s;
+            transition: opacity 0.25s ease-out, visibility 0.25s;
         }
         #splash svg { width: 85%; height: auto; max-width: 360px; display: block; }
         .hide-splash { opacity: 0; visibility: hidden; }
@@ -83,7 +83,7 @@
     
 <div class="container">
     <div class="logo-container">
-        <img src="pslogo.svg" alt="PlantShed Logo" style="height: 30px; width: auto; max-width: 90%;">
+        <img src="pslogo.svg" alt="PlantShed Logo" style="height: 60px; width: auto; max-width: 90%;">
     </div>
 
     <div class="card">
@@ -183,40 +183,51 @@ checkServerForUpdates();
         initGPS();
     };
 
-    async function loadData() {
-        try {
-            const response = await fetch(SCRIPT_URL);
-            const data = await response.json();
-            
-            // Populate Employees
-            const workerSelect = document.getElementById('worker');
-            workerSelect.innerHTML = '<option value="" disabled selected>Select Name</option>';
-            data.employees.forEach(name => {
-                const opt = document.createElement('option');
-                opt.value = opt.innerText = name;
-                workerSelect.appendChild(opt);
-            });
+   async function loadData() {
+    try {
+        const response = await fetch(SCRIPT_URL);
+        const data = await response.json();
+        
+        // 1. Still populate Employees as normal
+        const workerSelect = document.getElementById('worker');
+        workerSelect.innerHTML = '<option value="" disabled selected>Select Name</option>';
+        data.employees.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = opt.innerText = name;
+            workerSelect.appendChild(opt);
+        });
 
-            // Populate Clients (Formatted with Address)
-            const siteSelect = document.getElementById('site');
-            siteSelect.innerHTML = '<option value="" disabled selected>Select Client</option>';
-            clientList = data.clients;
-            data.clients.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.account + "|" + c.address; // Store both for the script
-                opt.innerText = c.account + " - " + c.address; // Visual combo
-                siteSelect.appendChild(opt);
-            });
+        // 2. SAVE the client data to our master variable
+        clientList = data.clients; 
 
-            // Auto-select if remembered
-            const savedUser = localStorage.getItem('ps_user');
-            if (savedUser) workerSelect.value = savedUser;
+        // 3. DO NOT populate the siteSelect here anymore. 
+        // We let the updateNearbySites() function handle it based on GPS.
+        const siteSelect = document.getElementById('site');
+        siteSelect.innerHTML = '<option value="" disabled selected>Waiting for GPS...</option>';
 
-        } catch (e) {
-            console.error("Load failed", e);
-        }
+        const savedUser = localStorage.getItem('ps_user');
+        if (savedUser) workerSelect.value = savedUser;
+
+    } catch (e) {
+        console.error("Load failed", e);
+    }
+}
     }
 
+    // --- GLOBAL VARIABLES ---
+    let loc = null;
+    let clientList = []; // This will hold the full list from Google Sheets
+    
+    function getDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // Earth's radius in meters
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    }
+    
     function initGPS() {
         navigator.geolocation.watchPosition((pos) => {
             const acc = Math.round(pos.coords.accuracy);
@@ -228,11 +239,64 @@ checkServerForUpdates();
                 status.className = "gps-status ready";
                 document.getElementById('inBtn').disabled = false;
                 document.getElementById('outBtn').disabled = false;
+                
+                // NEW: Every time location updates, refresh the nearby sites list
+                updateNearbySites(); 
             } else {
                 status.innerHTML = `🛰️ Searching... (${acc}m)`;
+                // Keep buttons disabled if accuracy is too low for a reliable geofence
+                document.getElementById('inBtn').disabled = true;
+                document.getElementById('outBtn').disabled = true;
             }
-        }, null, { enableHighAccuracy: true });
+        }, (err) => {
+            document.getElementById('gpsBox').innerText = "❌ GPS blocked! Check settings.";
+        }, { 
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 10000 
+        });
     }
+
+    function updateNearbySites() {
+    // Only run if we have a location AND the client list has loaded from the sheet
+    if (!loc || !clientList || clientList.length === 0) return;
+
+    const siteSelect = document.getElementById('site');
+    const currentSelection = siteSelect.value; // Remember what they picked if they already did
+    
+    // Filter the master list
+    const nearby = clientList.filter(site => {
+        const dist = getDistance(loc.lat, loc.lng, site.lat, site.lng);
+        return dist <= 150; // 150 meters
+    });
+
+    // Update the Dropdown UI
+    siteSelect.innerHTML = ''; // Clear old options
+    
+    if (nearby.length === 0) {
+        const opt = document.createElement('option');
+        opt.innerText = "No sites found nearby.";
+        opt.disabled = true;
+        opt.selected = true;
+        siteSelect.appendChild(opt);
+    } else {
+        // Add a default prompt
+        const prompt = document.createElement('option');
+        prompt.innerText = "Select Nearby Client";
+        prompt.disabled = true;
+        prompt.selected = !currentSelection;
+        siteSelect.appendChild(prompt);
+
+        nearby.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.account + "|" + c.address;
+            opt.innerText = c.account;
+            // Keep the item selected if they already clicked it
+            if (opt.value === currentSelection) opt.selected = true;
+            siteSelect.appendChild(opt);
+        });
+    }
+}
 
     async function submit(action) {
         const worker = document.getElementById('worker').value;
