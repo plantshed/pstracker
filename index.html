@@ -39,8 +39,20 @@
             padding-bottom: calc(100px + env(safe-area-inset-bottom)); 
         }
 
-        .logo-container { text-align: center; padding: 20px 0; }
-        .logo-container svg { height: 40px; width: auto; }
+        .logo-container { 
+            text-align: center; 
+            padding: 20px 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+        }
+        .logo-container img { 
+            height: 50px; 
+            width: auto; 
+            max-width: 90%; 
+            display: block; 
+        }
+    
 
         .card { background: white; padding: 20px; border-radius: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { margin: 0 0 10px 0; text-align: center; color: var(--primary); font-size: 1.1rem; font-weight: 600; }
@@ -60,7 +72,7 @@
         .btn-out { background: var(--danger); }
         button:disabled { opacity: 0.3; }
 
-        #resetLink { text-align: center; font-size: 10px; color: #ccc; margin-top: 15px; text-decoration: underline; }
+        #resetLink { text-align: center; font-size: 11px; color: #737373; margin-top: 25px; text-decoration: underline; }
     </style>
 </head>
 <body>
