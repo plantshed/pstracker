@@ -25,49 +25,24 @@
         }
         #splash {
             position: fixed; inset: 0; background: #FFFFFF; z-index: 10001;
-            display: flex; 
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             transition: opacity .3s ease-out, visibility 0.5s;
         }
-        #splash img { 
-            width: 85%; 
-            max-width: 360px; 
-            height: auto;
-            display: block; 
-            transform: translate(0, -20px); 
-        }
+        #splash img { width: 85%; max-width: 360px; height: auto; display: block; transform: translate(0, -20px); }
         .hide-splash { opacity: 0; visibility: hidden; }
 
         .container { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            padding: 10px 15px; 
-            max-width: 500px; 
-            margin: 0 auto; 
-            width: 100%; 
+            flex: 1; display: flex; flex-direction: column; 
+            padding: 10px 15px; max-width: 500px; margin: 0 auto; width: 100%; 
             padding-bottom: calc(40px + env(safe-area-inset-bottom)); 
         }
 
-        .logo-container { 
-            text-align: center; 
-            padding: 10px 0; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-        }
+        .logo-container { text-align: center; padding: 10px 0; display: flex; justify-content: center; align-items: center; }
         .logo-container img { height: 75px; width: auto; max-width: 90%; display: block; }
 
         .card { background: white; padding: 15px ; border-radius: 12px; box-shadow: 0 4px 7px rgba(0,0,0,0.1); }
         h2 { margin: 0 0 8px 0; text-align: center; color: var(--primary); font-size: 1rem; font-weight: 600; }
         label { font-weight: bold; color: #666; font-size: 0.85rem; display: block; margin-top: 10px; }
-        
-        #addressDisplay {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
         
         select, input { 
             width: 100%; padding: 10px; margin-top: 5px; border: 2px solid #eee; 
@@ -78,7 +53,6 @@
         .ready { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
 
         .footer { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 10px; }
-        
         .btn { height: 100px; border: none; border-radius: 12px; color: white; font-size: 1.5rem; font-weight: 400; }
         .btn-in { background: var(--success); }
         .btn-out { background: var(--danger); }
@@ -86,42 +60,15 @@
 
         #resetLink { text-align: center; font-size: 10px; color: #bbb; margin-top: 10px; padding-bottom: 15px; text-decoration: underline; cursor: pointer; }
 
+        /* OVERLAY MENU STYLES */
         .status-option {
-            width: 100%;
-            padding: 15px;
-            margin-bottom: 10px;
-            border: 2px solid #eee;
-            border-radius: 12px;
-            background: #fafafa;
-            font-size: 0.95rem;
-            color: #444;
-            text-align: center;
-            transition: all 0.2s;
-            cursor: pointer;
+            width: 100%; padding: 15px; margin-bottom: 10px; border: 2px solid #eee; 
+            border-radius: 12px; background: #fafafa; font-size: 0.95rem; color: #444; 
+            text-align: center; transition: all 0.2s; cursor: pointer;
         }
-
-        .status-option.active {
-            border-color: var(--success);
-            background: #e8f5e9;
-            color: #155724;
-            font-weight: bold;
-        }
-
-        .menu-footer {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-top: 15px;
-        }
-
-        .btn-small {
-            height: 50px;
-            border: none;
-            border-radius: 12px;
-            color: white;
-            font-weight: 700;
-            font-size: 1rem;
-        }
+        .status-option.active { border-color: var(--success); background: #e8f5e9; color: #155724; font-weight: bold; }
+        .menu-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
+        .btn-small { height: 50px; border: none; border-radius: 12px; color: white; font-weight: 700; font-size: 1rem; }
     </style>
 </head>
 <body>
@@ -138,12 +85,10 @@
     <div class="card">
         <h2 id="greeting">Field Log</h2>
         
-        <div id="workerArea">
-            <label>Employee Name</label>
-            <select id="worker">
-                <option value="" disabled selected>Loading Employees...</option>
-            </select>
-        </div>
+        <label>Employee Name</label>
+        <select id="worker">
+            <option value="" disabled selected>Loading Employees...</option>
+        </select>
 
         <label>Account & Site Address</label>
         <select id="site">
@@ -170,7 +115,7 @@
     <div id="resetLink" onclick="resetUser()">Switch User / Reset Device</div>
 </div>
 
-<div id="outMenu" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.8); z-index:20000; align-items:center; justify-content:center; padding:20px;">
+<div id="outMenu" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:20000; align-items:center; justify-content:center; padding:20px;">
     <div class="card" style="width:100%; max-width:400px;">
         <h3 style="margin:0 0 15px 0; text-align:center; font-size:1.1rem;">Clock Out Status</h3>
         
@@ -193,25 +138,6 @@
     let clientList = [];
     let selectedStatus = ""; 
 
-    setInterval(checkServerForUpdates, 1800000);
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkServerForUpdates(); });
-
-    async function checkServerForUpdates() {
-        try {
-            const versionCheckUrl = "manifest.json?v=" + new Date().getTime();
-            const response = await fetch(versionCheckUrl, { method: 'GET', cache: 'no-store' });
-            const lastModified = response.headers.get("Last-Modified");
-            const cachedModified = localStorage.getItem("last_update");
-            if (cachedModified && lastModified !== cachedModified) {
-                localStorage.setItem("last_update", lastModified);
-                window.location.href = window.location.origin + window.location.pathname + "?update=" + new Date().getTime();
-            } else {
-                localStorage.setItem("last_update", lastModified);
-            }
-        } catch (err) { console.log("Update check skipped"); }
-    }
-    checkServerForUpdates();
-
     window.onload = async function() {
         setTimeout(() => document.getElementById('splash').classList.add('hide-splash'), 1500);
         await loadData();
@@ -230,19 +156,16 @@
                 workerSelect.appendChild(opt);
             });
             clientList = data.clients; 
+            
             const savedUser = localStorage.getItem('ps_user');
             if (savedUser) workerSelect.value = savedUser;
-        } catch (e) { console.error("Load failed", e); }
-    }
 
-    function getDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371e3;
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+            // Load saved state
+            const savedSite = localStorage.getItem('ps_last_site');
+            const savedTask = localStorage.getItem('ps_last_task');
+            if (savedTask) document.getElementById('task').value = savedTask;
+            // Site selection happens after GPS finds nearby sites
+        } catch (e) { console.error("Load failed", e); }
     }
 
     function initGPS() {
@@ -262,59 +185,44 @@
                 document.getElementById('outBtn').disabled = true;
             }
         }, (err) => {
-            document.getElementById('gpsBox').innerText = "❌ GPS blocked! Check settings.";
+            document.getElementById('gpsBox').innerText = "❌ GPS blocked!";
         }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
+    }
+
+    function updateNearbySites() {
+        if (!loc || !clientList.length) return;
+        const siteSelect = document.getElementById('site');
+        const savedSite = localStorage.getItem('ps_last_site');
+        const nearby = clientList.filter(site => getDistance(loc.lat, loc.lng, site.lat, site.lng) <= 150);
+
+        siteSelect.innerHTML = '<option value="" disabled selected>Select Nearby Client</option>';
+        nearby.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.account + "|" + c.address;
+            opt.innerText = c.account; 
+            if (opt.value === savedSite) opt.selected = true;
+            siteSelect.appendChild(opt);
+        });
+        syncAddressLabel();
     }
 
     function syncAddressLabel() {
         const val = document.getElementById('site').value;
         const display = document.getElementById('addressDisplay');
-        if (val && val.includes("|")) {
-            display.innerHTML = "📍 " + val.split("|")[1];
-        } else {
-            display.innerHTML = "";
-        }
+        display.innerHTML = (val && val.includes("|")) ? "📍 " + val.split("|")[1] : "";
+        if (val) localStorage.setItem('ps_last_site', val);
     }
 
-    function updateNearbySites() {
-        if (!loc || !clientList || clientList.length === 0) return;
-        const siteSelect = document.getElementById('site');
-        const currentSelection = siteSelect.value;
-        const nearby = clientList.filter(site => getDistance(loc.lat, loc.lng, site.lat, site.lng) <= 150);
+    document.getElementById('task').onchange = function() {
+        localStorage.setItem('ps_last_task', this.value);
+    };
 
-        siteSelect.innerHTML = '';
-        if (nearby.length === 0) {
-            const opt = document.createElement('option');
-            opt.innerText = "No sites found nearby.";
-            opt.disabled = true; opt.selected = true;
-            siteSelect.appendChild(opt);
-        } else {
-            const prompt = document.createElement('option');
-            prompt.innerText = "Select Nearby Client";
-            prompt.value = ""; 
-            prompt.disabled = true; 
-            prompt.selected = !currentSelection; 
-            siteSelect.appendChild(prompt);
-
-            nearby.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.account + "|" + c.address;
-                opt.innerText = c.account; 
-                if (opt.value === currentSelection) opt.selected = true;
-                siteSelect.appendChild(opt);
-            });
-        }
-        syncAddressLabel();
-    }
-
-    // --- OVERLAY LOGIC ---
     function selectOption(element, statusValue) {
         document.querySelectorAll('.status-option').forEach(opt => opt.classList.remove('active'));
         element.classList.add('active');
         selectedStatus = statusValue;
-        const subBtn = document.getElementById('submitMenuBtn');
-        subBtn.disabled = false;
-        subBtn.style.opacity = "1";
+        document.getElementById('submitMenuBtn').disabled = false;
+        document.getElementById('submitMenuBtn').style.opacity = "1";
     }
 
     function closeMenu() {
@@ -322,7 +230,6 @@
         selectedStatus = "";
         document.getElementById('submitMenuBtn').disabled = true;
         document.getElementById('submitMenuBtn').style.opacity = "0.3";
-        document.querySelectorAll('.status-option').forEach(opt => opt.classList.remove('active'));
     }
 
     async function processFinalOut() {
@@ -332,56 +239,52 @@
         await submit("CLOCK OUT", status);
     }
 
-    // --- SUBMIT LOGIC ---
     async function submit(action, statusUpdate = "DONE") {
         const worker = document.getElementById('worker').value;
         const siteRaw = document.getElementById('site').value;
         const task = document.getElementById('task').value;
 
-        if (!worker || !siteRaw || siteRaw === "") return alert("Please select your Name and a valid Site.");
+        if (!worker || !siteRaw) return alert("Select Name and Site.");
 
         const [account, siteAddress] = siteRaw.split("|");
         document.getElementById('gpsBox').innerText = "⌛ Logging...";
-        document.getElementById('inBtn').disabled = true;
-        document.getElementById('outBtn').disabled = true;
 
         try {
             localStorage.setItem('ps_user', worker);
+            if (action === "CLOCK OUT") {
+                localStorage.removeItem('ps_last_site');
+                localStorage.removeItem('ps_last_task');
+            }
+
             await fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
                 body: JSON.stringify({
-                    worker: worker,
-                    account: account,
-                    siteAddress: siteAddress,
-                    task: task,
-                    action: action,
-                    statusUpdate: statusUpdate,
+                    worker: worker, account: account, siteAddress: siteAddress,
+                    task: task, action: action, statusUpdate: statusUpdate,
                     gps: `${loc.lat},${loc.lng}`
                 })
             });
-            alert("Logged Successfully!");
+            alert("Success!");
             location.reload();
-        } catch (e) { 
-            alert("Error saving log."); 
-            location.reload(); 
-        }
+        } catch (e) { alert("Error!"); location.reload(); }
     }
 
-    function resetUser() {
-        if (confirm("Reset device memory?")) {
-            localStorage.removeItem('ps_user');
-            location.reload();
-        }
+    function getDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+        return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
     }
 
     document.getElementById('inBtn').onclick = () => submit("CLOCK IN");
-    document.getElementById('outBtn').onclick = () => {
-        const siteRaw = document.getElementById('site').value;
-        if (!siteRaw || siteRaw === "") return alert("Please select a Site first.");
-        document.getElementById('outMenu').style.display = 'flex';
-    };
+    document.getElementById('outBtn').onclick = () => document.getElementById('outMenu').style.display = 'flex';
     document.getElementById('site').addEventListener('change', syncAddressLabel);
+    
+    function resetUser() {
+        if (confirm("Reset?")) { localStorage.clear(); location.reload(); }
+    }
 </script>
 </body>
 </html>
