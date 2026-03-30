@@ -138,6 +138,27 @@
     let clientList = [];
     let selectedStatus = ""; 
 
+    // --- FORCE REFRESH / UPDATE CHECK ---
+    setInterval(checkServerForUpdates, 1800000);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkServerForUpdates(); });
+
+    async function checkServerForUpdates() {
+        try {
+            const versionCheckUrl = "manifest.json?v=" + new Date().getTime();
+            const response = await fetch(versionCheckUrl, { method: 'GET', cache: 'no-store' });
+            const lastModified = response.headers.get("Last-Modified");
+            const cachedModified = localStorage.getItem("last_update");
+            if (cachedModified && lastModified !== cachedModified) {
+                localStorage.setItem("last_update", lastModified);
+                window.location.href = window.location.origin + window.location.pathname + "?update=" + new Date().getTime();
+            } else {
+                localStorage.setItem("last_update", lastModified);
+            }
+        } catch (err) { console.log("Update check skipped"); }
+    }
+    // Run once on load
+    checkServerForUpdates();
+
     window.onload = async function() {
         setTimeout(() => document.getElementById('splash').classList.add('hide-splash'), 1500);
         await loadData();
@@ -168,7 +189,6 @@
         } catch (e) { console.error("Load failed", e); }
     }
 
-    // This locks the dropdowns if clocked in, but keeps buttons visible
     function toggleLock(shouldLock) {
         const ids = ['worker', 'site', 'task'];
         ids.forEach(id => {
@@ -191,10 +211,8 @@
                 status.innerHTML = `🛰️ Searching... (${acc}m)`;
                 document.getElementById('inBtn').disabled = true;
             }
-
-            // Lenient Out: Always enabled if loc exists
+            // Lenient Out
             document.getElementById('outBtn').disabled = false;
-            
             updateNearbySites(); 
         }, (err) => {
             document.getElementById('gpsBox').innerText = "❌ GPS blocked!";
@@ -207,7 +225,6 @@
         const siteSelect = document.getElementById('site');
         const savedSite = localStorage.getItem('ps_last_site');
         
-        // If UI is locked, keep the saved site visible
         if (savedSite && document.getElementById('site').disabled) {
             siteSelect.innerHTML = `<option value="${savedSite}" selected>${savedSite.split('|')[0]}</option>`;
             syncAddressLabel();
