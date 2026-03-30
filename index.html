@@ -302,6 +302,7 @@
     }
 
     async function processFinalOut() {
+        if (document.getElementById('submitMenuBtn').disabled) return;
         if (!selectedStatus) return;
         const status = selectedStatus;
         closeMenu();
