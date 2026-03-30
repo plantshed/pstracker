@@ -54,13 +54,12 @@
 
         .footer { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 10px; }
         .btn { height: 100px; border: none; border-radius: 12px; color: white; font-size: 1.5rem; font-weight: 400; }
-        .btn-in { background: var(--success); }
-        .btn-out { background: var(--danger); }
+        .btn-in { background: var(--success); grid-column: span 2; } /* Modified to take full width when alone */
+        .btn-out { background: var(--danger); grid-column: span 2; } /* Modified to take full width when alone */
         button:disabled { opacity: 0.3; }
 
         #resetLink { text-align: center; font-size: 10px; color: #bbb; margin-top: 10px; padding-bottom: 15px; text-decoration: underline; cursor: pointer; }
 
-        /* OVERLAY MENU STYLES */
         .status-option {
             width: 100%; padding: 15px; margin-bottom: 10px; border: 2px solid #eee; 
             border-radius: 12px; background: #fafafa; font-size: 0.95rem; color: #444; 
@@ -100,7 +99,7 @@
         <label>Job Type</label>
         <select id="task">
             <option value="Routine Maintenance">Routine Maintenance</option>
-            <option value="Install">Refresh/Replacement</option>
+            <option value="Refresh/Replacement">Refresh/Replacement</option>
             <option value="Install">Install</option>
             <option value="Audit">Audit</option>
         </select>
@@ -110,13 +109,13 @@
 
     <div class="footer">
         <button id="inBtn" class="btn btn-in" disabled>Check In</button>
-        <button id="outBtn" class="btn btn-out" disabled>Check Out</button>
+        <button id="outBtn" class="btn btn-out" style="display: none;">Check Out</button>
     </div>
 
     <div id="resetLink" onclick="resetUser()">Switch User / Reset Device</div>
 </div>
 
-<div id="outMenu" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.8); z-index:20000; align-items:center; justify-content:center; padding:20px;">
+<div id="outMenu" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.7); z-index:20000; align-items:center; justify-content:center; padding:20px;">
     <div class="card" style="width:100%; max-width:400px;">
         <h3 style="margin:0 0 15px 0; text-align:center; font-size:1.1rem;">Clock Out Status</h3>
         
@@ -161,12 +160,35 @@
             const savedUser = localStorage.getItem('ps_user');
             if (savedUser) workerSelect.value = savedUser;
 
-            // Load saved state
             const savedSite = localStorage.getItem('ps_last_site');
             const savedTask = localStorage.getItem('ps_last_task');
             if (savedTask) document.getElementById('task').value = savedTask;
-            // Site selection happens after GPS finds nearby sites
+            
+            // Check if we should lock UI
+            if (savedSite) toggleUIState(true);
         } catch (e) { console.error("Load failed", e); }
+    }
+
+    function toggleUIState(isClockedIn) {
+        const inBtn = document.getElementById('inBtn');
+        const outBtn = document.getElementById('outBtn');
+        const ids = ['worker', 'site', 'task'];
+
+        if (isClockedIn) {
+            inBtn.style.display = 'none';
+            outBtn.style.display = 'block';
+            ids.forEach(id => {
+                document.getElementById(id).disabled = true;
+                document.getElementById(id).style.opacity = "0.6";
+            });
+        } else {
+            inBtn.style.display = 'block';
+            outBtn.style.display = 'none';
+            ids.forEach(id => {
+                document.getElementById(id).disabled = false;
+                document.getElementById(id).style.opacity = "1";
+            });
+        }
     }
 
     function initGPS() {
@@ -174,19 +196,23 @@
             const acc = Math.round(pos.coords.accuracy);
             loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
             const status = document.getElementById('gpsBox');
+            
             if (acc <= 150) {
                 status.innerHTML = `✅ Location ready`;
                 status.className = "gps-status ready";
                 document.getElementById('inBtn').disabled = false;
-                document.getElementById('outBtn').disabled = false;
-                updateNearbySites(); 
             } else {
                 status.innerHTML = `🛰️ Searching... (${acc}m)`;
                 document.getElementById('inBtn').disabled = true;
-                document.getElementById('outBtn').disabled = true;
             }
+
+            // Lenient Check Out: Always enabled if loc exists
+            document.getElementById('outBtn').disabled = false;
+            
+            updateNearbySites(); 
         }, (err) => {
             document.getElementById('gpsBox').innerText = "❌ GPS blocked!";
+            document.getElementById('outBtn').disabled = false; // Still allow CO attempt
         }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
     }
 
@@ -194,8 +220,15 @@
         if (!loc || !clientList.length) return;
         const siteSelect = document.getElementById('site');
         const savedSite = localStorage.getItem('ps_last_site');
-        const nearby = clientList.filter(site => getDistance(loc.lat, loc.lng, site.lat, site.lng) <= 150);
+        
+        // If locked in, don't refresh list based on distance
+        if (savedSite && document.getElementById('site').disabled) {
+            siteSelect.innerHTML = `<option value="${savedSite}" selected>${savedSite.split('|')[0]}</option>`;
+            syncAddressLabel();
+            return;
+        }
 
+        const nearby = clientList.filter(site => getDistance(loc.lat, loc.lng, site.lat, site.lng) <= 150);
         siteSelect.innerHTML = '<option value="" disabled selected>Select Nearby Client</option>';
         nearby.forEach(c => {
             const opt = document.createElement('option');
@@ -211,12 +244,7 @@
         const val = document.getElementById('site').value;
         const display = document.getElementById('addressDisplay');
         display.innerHTML = (val && val.includes("|")) ? "📍 " + val.split("|")[1] : "";
-        if (val) localStorage.setItem('ps_last_site', val);
     }
-
-    document.getElementById('task').onchange = function() {
-        localStorage.setItem('ps_last_task', this.value);
-    };
 
     function selectOption(element, statusValue) {
         document.querySelectorAll('.status-option').forEach(opt => opt.classList.remove('active'));
@@ -230,7 +258,7 @@
         document.getElementById('outMenu').style.display = 'none';
         selectedStatus = "";
         document.getElementById('submitMenuBtn').disabled = true;
-        document.getElementById('submitMenuBtn').style.opacity = "0.3";
+        document.getElementById('submitMenuBtn').style.opacity = "0.2";
     }
 
     async function processFinalOut() {
@@ -252,9 +280,14 @@
 
         try {
             localStorage.setItem('ps_user', worker);
-            if (action === "CLOCK OUT") {
+            if (action === "CLOCK IN") {
+                localStorage.setItem('ps_last_site', siteRaw);
+                localStorage.setItem('ps_last_task', task);
+                toggleUIState(true);
+            } else {
                 localStorage.removeItem('ps_last_site');
                 localStorage.removeItem('ps_last_task');
+                toggleUIState(false);
             }
 
             await fetch(SCRIPT_URL, {
@@ -282,9 +315,12 @@
     document.getElementById('inBtn').onclick = () => submit("CLOCK IN");
     document.getElementById('outBtn').onclick = () => document.getElementById('outMenu').style.display = 'flex';
     document.getElementById('site').addEventListener('change', syncAddressLabel);
+    document.getElementById('task').addEventListener('change', function() {
+        localStorage.setItem('ps_last_task', this.value);
+    });
     
     function resetUser() {
-        if (confirm("Reset?")) { localStorage.clear(); location.reload(); }
+        if (confirm("Reset Device Memory?")) { localStorage.clear(); location.reload(); }
     }
 </script>
 </body>
