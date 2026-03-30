@@ -86,43 +86,42 @@
 
         #resetLink { text-align: center; font-size: 10px; color: #bbb; margin-top: 10px; padding-bottom: 15px; text-decoration: underline; cursor: pointer; }
 
-        /* CLOCK OUT BUTTON STYLING */
-            .status-option {
-                width: 100%;
-                padding: 15px;
-                margin-bottom: 10px;
-                border: 2px solid #eee;
-                border-radius: 12px;
-                background: #fafafa;
-                font-size: 0.95rem;
-                color: #444;
-                text-align: center;
-                transition: all 0.2s;
-            }
+        .status-option {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            background: #fafafa;
+            font-size: 0.95rem;
+            color: #f2f2f2;
+            text-align: center;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
 
-            /* When an option is tapped/selected */
-            .status-option.active {
-                border-color: var(--success);
-                background: #e8f5e9;
-                color: #155724;
-                font-weight: bold;
-            }
+        .status-option.active {
+            border-color: var(--success);
+            background: #e8f5e9;
+            color: #155724;
+            font-weight: bold;
+        }
 
-            .menu-footer {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 12px;
-                margin-top: 15px;
-            }
+        .menu-footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 15px;
+        }
 
-            .btn-small {
-                height: 50px;
-                border: none;
-                border-radius: 12px;
-                color: white;
-                font-weight: 700;
-                font-size: 1rem;
-            }
+        .btn-small {
+            height: 50px;
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -171,10 +170,28 @@
     <div id="resetLink" onclick="resetUser()">Switch User / Reset Device</div>
 </div>
 
+<div id="outMenu" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:20000; align-items:center; justify-content:center; padding:20px;">
+    <div class="card" style="width:100%; max-width:400px;">
+        <h3 style="margin:0 0 15px 0; text-align:center; font-size:1.1rem;">Clock Out Status</h3>
+        
+        <div id="optionsList">
+            <div class="status-option" onclick="selectOption(this, 'Completed')">Job has been completed</div>
+            <div class="status-option" onclick="selectOption(this, 'No Access')">I was not able to access site</div>
+            <div class="status-option" onclick="selectOption(this, 'Replacement Noted')">Maintenance team noted replacement</div>
+        </div>
+
+        <div class="menu-footer">
+            <button id="submitMenuBtn" class="btn-small btn-in" style="opacity:0.3;" disabled onclick="processFinalOut()">Submit</button>
+            <button id="cancelMenuBtn" class="btn-small btn-out" onclick="closeMenu()">Cancel</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby0oeKCuEiXxaGYWkQXAe3Fg65g5t3dqpUSW7jLNXuPFayH4GaaDoyTgx7wRGCwFv9h/exec";
     let loc = null;
     let clientList = [];
+    let selectedStatus = ""; 
 
     setInterval(checkServerForUpdates, 1800000);
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkServerForUpdates(); });
@@ -290,59 +307,32 @@
         syncAddressLabel();
     }
 
-    async function submit(action) {
-        const worker = document.getElementById('worker').value;
-        const siteRaw = document.getElementById('site').value;
-        const task = document.getElementById('task').value;
-        if (!worker || !siteRaw || siteRaw === "") return alert("Please select your Name and a valid Site.");
-        const [account, siteAddress] = siteRaw.split("|");
-        document.getElementById('gpsBox').innerText = "⌛ Logging...";
-        document.getElementById('inBtn').disabled = true;
-        document.getElementById('outBtn').disabled = true;
-        try {
-            localStorage.setItem('ps_user', worker);
-            await fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: JSON.stringify({
-                    worker: worker,
-                    account: account,
-                    siteAddress: siteAddress,
-                    task: task,
-                    action: action,
-                    gps: `${loc.lat},${loc.lng}`
-                })
-            });
-            alert("Logged Successfully!");
-            location.reload();
-        } catch (e) { alert("Error saving log."); location.reload(); }
+    // --- OVERLAY LOGIC ---
+    function selectOption(element, statusValue) {
+        document.querySelectorAll('.status-option').forEach(opt => opt.classList.remove('active'));
+        element.classList.add('active');
+        selectedStatus = statusValue;
+        const subBtn = document.getElementById('submitMenuBtn');
+        subBtn.disabled = false;
+        subBtn.style.opacity = "1";
     }
-
-    function resetUser() {
-        if (confirm("Reset device memory?")) {
-            localStorage.removeItem('ps_user');
-            location.reload();
-        }
-    }
-
-    document.getElementById('inBtn').onclick = () => submit("CLOCK IN");
-
-    document.getElementById('outBtn').onclick = () => {
-        const siteRaw = document.getElementById('site').value;
-        if (!siteRaw || siteRaw === "") return alert("Please select a Site first.");
-        document.getElementById('outMenu').style.display = 'flex';
-    };
 
     function closeMenu() {
         document.getElementById('outMenu').style.display = 'none';
+        selectedStatus = "";
+        document.getElementById('submitMenuBtn').disabled = true;
+        document.getElementById('submitMenuBtn').style.opacity = "0.3";
+        document.querySelectorAll('.status-option').forEach(opt => opt.classList.remove('active'));
     }
 
-    async function confirmOut(statusUpdate) {
+    async function processFinalOut() {
+        if (!selectedStatus) return;
+        const status = selectedStatus;
         closeMenu();
-        await submit("CLOCK OUT", statusUpdate);
+        await submit("CLOCK OUT", status);
     }
 
-    // --- UPDATED SUBMIT FUNCTION ---
+    // --- SUBMIT LOGIC ---
     async function submit(action, statusUpdate = "DONE") {
         const worker = document.getElementById('worker').value;
         const siteRaw = document.getElementById('site').value;
@@ -351,8 +341,6 @@
         if (!worker || !siteRaw || siteRaw === "") return alert("Please select your Name and a valid Site.");
 
         const [account, siteAddress] = siteRaw.split("|");
-        
-        // UI Feedback
         document.getElementById('gpsBox').innerText = "⌛ Logging...";
         document.getElementById('inBtn').disabled = true;
         document.getElementById('outBtn').disabled = true;
@@ -368,7 +356,7 @@
                     siteAddress: siteAddress,
                     task: task,
                     action: action,
-                    statusUpdate: statusUpdate, // This sends the specific menu choice
+                    statusUpdate: statusUpdate,
                     gps: `${loc.lat},${loc.lng}`
                 })
             });
@@ -380,24 +368,20 @@
         }
     }
 
+    function resetUser() {
+        if (confirm("Reset device memory?")) {
+            localStorage.removeItem('ps_user');
+            location.reload();
+        }
+    }
 
+    document.getElementById('inBtn').onclick = () => submit("CLOCK IN");
+    document.getElementById('outBtn').onclick = () => {
+        const siteRaw = document.getElementById('site').value;
+        if (!siteRaw || siteRaw === "") return alert("Please select a Site first.");
+        document.getElementById('outMenu').style.display = 'flex';
+    };
     document.getElementById('site').addEventListener('change', syncAddressLabel);
 </script>
-        <div id="outMenu" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:20000; align-items:center; justify-content:center; padding:20px;">
-            <div class="card" style="width:100%; max-width:400px;">
-                <h3 style="margin:0 0 15px 0; text-align:center; font-size:1.1rem;">Clock Out Status</h3>
-                
-                <div id="optionsList">
-                    <div class="status-option" onclick="selectOption(this, 'Completed')">Job has been completed</div>
-                    <div class="status-option" onclick="selectOption(this, 'No Access')">I was not able to access site</div>
-                    <div class="status-option" onclick="selectOption(this, 'Replacement Noted')">Maintenance team noted replacement</div>
-                </div>
-
-                <div class="menu-footer">
-                    <button id="cancelMenuBtn" class="btn-small btn-out" onclick="closeMenu()">Cancel</button>
-                    <button id="submitMenuBtn" class="btn-small btn-in" style="opacity:0.3;" disabled onclick="processFinalOut()">Submit</button>
-                </div>
-            </div>
-        </div>
 </body>
 </html>
