@@ -221,17 +221,27 @@
     }
 
     function updateNearbySites() {
-        if (!loc || !clientList.length) return;
-        const siteSelect = document.getElementById('site');
-        const savedSite = localStorage.getItem('ps_last_site');
-        
-        if (savedSite && document.getElementById('site').disabled) {
-            siteSelect.innerHTML = `<option value="${savedSite}" selected>${savedSite.split('|')[0]}</option>`;
-            syncAddressLabel();
-            return;
-        }
+    if (!loc || !clientList.length) return;
+    const siteSelect = document.getElementById('site');
+    const savedSite = localStorage.getItem('ps_last_site');
+    
+    // NEW: If the user has ALREADY picked a site and is just 
+    // waiting to hit "In", don't let the GPS refresh wipe the choice.
+    if (siteSelect.value !== "" && !siteSelect.disabled) {
+        return; 
+    }
+    
+    // If locked in (already clocked in), keep the saved site visible
+    if (savedSite && siteSelect.disabled) {
+        siteSelect.innerHTML = `<option value="${savedSite}" selected>${savedSite.split('|')[0]}</option>`;
+        syncAddressLabel();
+        return;
+    }
 
-        const nearby = clientList.filter(site => getDistance(loc.lat, loc.lng, site.lat, site.lng) <= 150);
+    const nearby = clientList.filter(site => getDistance(loc.lat, loc.lng, site.lat, site.lng) <= 150);
+    
+    // Only rebuild the list if it's currently empty or showing the prompt
+    if (siteSelect.value === "") {
         siteSelect.innerHTML = '<option value="" disabled selected>Select Nearby Client</option>';
         nearby.forEach(c => {
             const opt = document.createElement('option');
@@ -242,6 +252,7 @@
         });
         syncAddressLabel();
     }
+}
 
     function syncAddressLabel() {
         const val = document.getElementById('site').value;
@@ -317,7 +328,11 @@
 
     document.getElementById('inBtn').onclick = () => submit("CLOCK IN");
     document.getElementById('outBtn').onclick = () => document.getElementById('outMenu').style.display = 'flex';
-    document.getElementById('site').addEventListener('change', syncAddressLabel);
+    document.getElementById('site').addEventListener('change', () => {
+    syncAddressLabel();
+    const val = document.getElementById('site').value;
+    if (val) localStorage.setItem('ps_last_site', val);
+});
     document.getElementById('task').addEventListener('change', function() {
         localStorage.setItem('ps_last_task', this.value);
     });
