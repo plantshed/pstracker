@@ -67,7 +67,7 @@
             text-align: center; transition: all 0.2s; cursor: pointer;
         }
         .status-option.active { border-color: var(--success); background: #e8f5e9; color: #155724; font-weight: bold; }
-        .menu-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
+        .menu-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 40px; }
         .btn-small { height: 50px; border: none; border-radius: 12px; color: white; font-weight: 700; font-size: 1rem; }
     </style>
 </head>
@@ -115,7 +115,7 @@
     <div id="resetLink" onclick="resetUser()">Switch User / Reset Device</div>
 </div>
 
-<div id="outMenu" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:20000; align-items:center; justify-content:center; padding:20px;">
+<div id="outMenu" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.8); z-index:20000; align-items:center; justify-content:center; padding:20px;">
     <div class="card" style="width:100%; max-width:400px;">
         <h3 style="margin:0 0 15px 0; text-align:center; font-size:1.1rem;">Clock Out Status</h3>
         
@@ -126,7 +126,7 @@
         </div>
 
         <div class="menu-footer">
-            <button id="submitMenuBtn" class="btn-small btn-in" style="opacity:0.3;" disabled onclick="processFinalOut()">Submit</button>
+            <button id="submitMenuBtn" class="btn-small btn-in" style="opacity:0.2;" disabled onclick="processFinalOut()">Submit</button>
             <button id="cancelMenuBtn" class="btn-small btn-out" onclick="closeMenu()">Cancel</button>
         </div>
     </div>
