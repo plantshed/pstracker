@@ -54,8 +54,8 @@
 
         .footer { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 10px; }
         .btn { height: 100px; border: none; border-radius: 12px; color: white; font-size: 1.5rem; font-weight: 400; }
-        .btn-in { background: var(--success); grid-column: span 2; } /* Modified to take full width when alone */
-        .btn-out { background: var(--danger); grid-column: span 2; } /* Modified to take full width when alone */
+        .btn-in { background: var(--success); }
+        .btn-out { background: var(--danger); }
         button:disabled { opacity: 0.3; }
 
         #resetLink { text-align: center; font-size: 10px; color: #bbb; margin-top: 10px; padding-bottom: 15px; text-decoration: underline; cursor: pointer; }
@@ -109,13 +109,13 @@
 
     <div class="footer">
         <button id="inBtn" class="btn btn-in" disabled>Check In</button>
-        <button id="outBtn" class="btn btn-out" style="display: none;">Check Out</button>
+        <button id="outBtn" class="btn btn-out" disabled>Check Out</button>
     </div>
 
     <div id="resetLink" onclick="resetUser()">Switch User / Reset Device</div>
 </div>
 
-<div id="outMenu" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.7); z-index:20000; align-items:center; justify-content:center; padding:20px;">
+<div id="outMenu" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:20000; align-items:center; justify-content:center; padding:20px;">
     <div class="card" style="width:100%; max-width:400px;">
         <h3 style="margin:0 0 15px 0; text-align:center; font-size:1.1rem;">Clock Out Status</h3>
         
@@ -164,31 +164,17 @@
             const savedTask = localStorage.getItem('ps_last_task');
             if (savedTask) document.getElementById('task').value = savedTask;
             
-            // Check if we should lock UI
-            if (savedSite) toggleUIState(true);
+            if (savedSite) toggleLock(true);
         } catch (e) { console.error("Load failed", e); }
     }
 
-    function toggleUIState(isClockedIn) {
-        const inBtn = document.getElementById('inBtn');
-        const outBtn = document.getElementById('outBtn');
+    // This locks the dropdowns if clocked in, but keeps buttons visible
+    function toggleLock(shouldLock) {
         const ids = ['worker', 'site', 'task'];
-
-        if (isClockedIn) {
-            inBtn.style.display = 'none';
-            outBtn.style.display = 'block';
-            ids.forEach(id => {
-                document.getElementById(id).disabled = true;
-                document.getElementById(id).style.opacity = "0.6";
-            });
-        } else {
-            inBtn.style.display = 'block';
-            outBtn.style.display = 'none';
-            ids.forEach(id => {
-                document.getElementById(id).disabled = false;
-                document.getElementById(id).style.opacity = "1";
-            });
-        }
+        ids.forEach(id => {
+            document.getElementById(id).disabled = shouldLock;
+            document.getElementById(id).style.opacity = shouldLock ? "0.6" : "1";
+        });
     }
 
     function initGPS() {
@@ -206,13 +192,13 @@
                 document.getElementById('inBtn').disabled = true;
             }
 
-            // Lenient Check Out: Always enabled if loc exists
+            // Lenient Out: Always enabled if loc exists
             document.getElementById('outBtn').disabled = false;
             
             updateNearbySites(); 
         }, (err) => {
             document.getElementById('gpsBox').innerText = "❌ GPS blocked!";
-            document.getElementById('outBtn').disabled = false; // Still allow CO attempt
+            document.getElementById('outBtn').disabled = false;
         }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
     }
 
@@ -221,7 +207,7 @@
         const siteSelect = document.getElementById('site');
         const savedSite = localStorage.getItem('ps_last_site');
         
-        // If locked in, don't refresh list based on distance
+        // If UI is locked, keep the saved site visible
         if (savedSite && document.getElementById('site').disabled) {
             siteSelect.innerHTML = `<option value="${savedSite}" selected>${savedSite.split('|')[0]}</option>`;
             syncAddressLabel();
@@ -283,11 +269,11 @@
             if (action === "CLOCK IN") {
                 localStorage.setItem('ps_last_site', siteRaw);
                 localStorage.setItem('ps_last_task', task);
-                toggleUIState(true);
+                toggleLock(true);
             } else {
                 localStorage.removeItem('ps_last_site');
                 localStorage.removeItem('ps_last_task');
-                toggleUIState(false);
+                toggleLock(false);
             }
 
             await fetch(SCRIPT_URL, {
@@ -320,7 +306,7 @@
     });
     
     function resetUser() {
-        if (confirm("Reset Device Memory?")) { localStorage.clear(); location.reload(); }
+        if (confirm("Reset Device?")) { localStorage.clear(); location.reload(); }
     }
 </script>
 </body>
