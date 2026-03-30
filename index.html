@@ -189,13 +189,23 @@
         } catch (e) { console.error("Load failed", e); }
     }
 
-    function toggleLock(shouldLock) {
-        const ids = ['worker', 'site', 'task'];
-        ids.forEach(id => {
-            document.getElementById(id).disabled = shouldLock;
-            document.getElementById(id).style.opacity = shouldLock ? "0.6" : "1";
-        });
+   function toggleLock(shouldLock) {
+    const ids = ['worker', 'site', 'task'];
+    const inBtn = document.getElementById('inBtn');
+    
+    ids.forEach(id => {
+        document.getElementById(id).disabled = shouldLock;
+    });
+
+    // Disable Check In button if already clocked in
+    if (shouldLock) {
+        inBtn.disabled = true;
+        inBtn.style.opacity = "0.3";
+    } else {
+        // Only re-enable if GPS is ready (handled by initGPS)
+        if (loc) inBtn.disabled = false;
     }
+}
 
     function initGPS() {
         navigator.geolocation.watchPosition((pos) => {
@@ -282,41 +292,41 @@
         await submit("CLOCK OUT", status);
     }
 
-    async function submit(action, statusUpdate = "DONE") {
-        const worker = document.getElementById('worker').value;
-        const siteRaw = document.getElementById('site').value;
-        const task = document.getElementById('task').value;
+  async function submit(action, statusUpdate = "DONE") {
+    const worker = document.getElementById('worker').value;
+    const siteRaw = document.getElementById('site').value;
+    const task = document.getElementById('task').value;
 
-        if (!worker || !siteRaw) return alert("Select Name and Site.");
+    if (!worker || !siteRaw) return alert("Select Name and Site.");
 
-        const [account, siteAddress] = siteRaw.split("|");
-        document.getElementById('gpsBox').innerText = "⌛ Logging...";
+    const [account, siteAddress] = siteRaw.split("|");
+    document.getElementById('gpsBox').innerText = "⌛ Logging...";
 
-        try {
-            localStorage.setItem('ps_user', worker);
-            if (action === "CLOCK IN") {
-                localStorage.setItem('ps_last_site', siteRaw);
-                localStorage.setItem('ps_last_task', task);
-                toggleLock(true);
-            } else {
-                localStorage.removeItem('ps_last_site');
-                localStorage.removeItem('ps_last_task');
-                toggleLock(false);
-            }
+    try {
+        localStorage.setItem('ps_user', worker);
+        if (action === "CLOCK IN") {
+            localStorage.setItem('ps_last_site', siteRaw);
+            localStorage.setItem('ps_last_task', task);
+            toggleLock(true); // Lock dropdowns AND Check In button
+        } else {
+            localStorage.removeItem('ps_last_site');
+            localStorage.removeItem('ps_last_task');
+            toggleLock(false); // Unlock everything
+        }
 
-            await fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: JSON.stringify({
-                    worker: worker, account: account, siteAddress: siteAddress,
-                    task: task, action: action, statusUpdate: statusUpdate,
-                    gps: `${loc.lat},${loc.lng}`
-                })
-            });
-            alert("Success!");
-            location.reload();
-        } catch (e) { alert("Error!"); location.reload(); }
-    }
+        await fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({
+                worker: worker, account: account, siteAddress: siteAddress,
+                task: task, action: action, statusUpdate: statusUpdate,
+                gps: `${loc.lat},${loc.lng}`
+            })
+        });
+        alert("Success!");
+        location.reload();
+    } catch (e) { alert("Error!"); location.reload(); }
+}
 
     function getDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3;
