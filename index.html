@@ -308,7 +308,9 @@
         await submit("CLOCK OUT", status);
     }
 
-    async function submit(action, statusUpdate = "DONE") {
+  async function submit(action, statusUpdate = "DONE") {
+    if (action === "CLOCK IN" && document.getElementById('inBtn').disabled) return;
+
     const worker = document.getElementById('worker').value;
     const siteRaw = document.getElementById('site').value;
     const task = document.getElementById('task').value;
