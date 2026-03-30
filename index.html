@@ -40,8 +40,7 @@
             max-width: 500px; 
             margin: 0 auto; 
             width: 100%; 
-            /* This adds a buffer specifically for the phone's home bar */
-            padding-bottom: calc(30px + env(safe-area-inset-bottom)); 
+            padding-bottom: calc(40px + env(safe-area-inset-bottom)); 
         }
 
         .logo-container { 
@@ -51,7 +50,7 @@
             justify-content: center; 
             align-items: center; 
         }
-        .logo-container img { height: 50px; width: auto; max-width: 90%; display: block; }
+        .logo-container img { height: 60px; width: auto; max-width: 90%; display: block; }
 
         .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { margin: 0 0 8px 0; text-align: center; color: var(--primary); font-size: 1rem; font-weight: 600; }
@@ -71,14 +70,14 @@
         .gps-status { margin: 10px 0; padding: 6px; border-radius: 12px; text-align: center; font-weight: bold; font-size: 0.75rem; background: #eee; color: #666; }
         .ready { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
 
-       .footer {  margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;  /* Ensures buttons don't touch the very bottom */padding-bottom: 10px; }
+        .footer { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 10px; }
         
-        .btn { height: 100px; border: none; border-radius: 12px; color: white; font-size: 1.1rem; font-weight: 700; }
+        .btn { height: 100px; border: none; border-radius: 12px; color: white; font-size: 1.1rem; font-weight: 600; }
         .btn-in { background: var(--success); }
         .btn-out { background: var(--danger); }
         button:disabled { opacity: 0.3; }
 
-        #resetLink { text-align: center;  font-size: 10px;  color: #bbb; margin-top: 20px; padding-bottom: 10px; /* Extra padding so the link isn't "under" the home bar */ text-decoration: underline; cursor: pointer; }
+        #resetLink { text-align: center; font-size: 10px; color: #bbb; margin-top: 20px; padding-bottom: 15px; text-decoration: underline; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -232,27 +231,25 @@
             prompt.innerText = "Select Nearby Client";
             prompt.value = ""; 
             prompt.disabled = true; 
-            // This ensures it stays on the prompt until they click
-            prompt.selected = true; 
+            prompt.selected = !currentSelection; 
             siteSelect.appendChild(prompt);
-        
+
             nearby.forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c.account + "|" + c.address;
                 opt.innerText = c.account; 
+                if (opt.value === currentSelection) opt.selected = true;
                 siteSelect.appendChild(opt);
             });
-            
-        syncAddressLabel(); // Keeps label blank until selection
-    }
         }
+        syncAddressLabel();
     }
 
     async function submit(action) {
         const worker = document.getElementById('worker').value;
         const siteRaw = document.getElementById('site').value;
         const task = document.getElementById('task').value;
-        if (!worker || !siteRaw || siteRaw.includes("No sites")) return alert("Please select your Name and a valid Site.");
+        if (!worker || !siteRaw || siteRaw === "") return alert("Please select your Name and a valid Site.");
         const [account, siteAddress] = siteRaw.split("|");
         document.getElementById('gpsBox').innerText = "⌛ Logging...";
         document.getElementById('inBtn').disabled = true;
