@@ -49,6 +49,15 @@
             border-radius: 12px; font-size: 1rem; background: #fafafa; outline: none; 
         }
 
+        /* Overrides the browser default "fade" for disabled inputs */
+        select:disabled, input:disabled {
+            opacity: 1 !important;
+            color: #444 !important; /* Ensures the text stays dark */
+            background-color: #fafafa !important; /* Keeps the background consistent */
+            -webkit-text-fill-color: #444 !important; /* Required for iOS Safari */
+        }
+         
+        /* --developed by jason.h@plantshed.com-- */
         .gps-status { margin: 12px 40px; transform: translate(0, 10px); padding: 7px; border-radius: 12px; text-align: center; font-weight: bold; font-size: 0.75rem; background: #eee; color: #666; }
         .ready { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
 
@@ -69,11 +78,17 @@
         .menu-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 40px; }
         .btn-small { height: 50px; border: none; border-radius: 12px; color: white; font-weight: 700; font-size: 1rem; }
     </style>
+    
+    
 </head>
 <body>
 
 <div id="splash">
     <img src="pslogo.svg" alt="PlantShed Logo">
+    <div style="position: absolute; bottom: 30px; font-size: 10px; color: #999;">
+        &copy; 2026 PlantShed Design Studio
+       
+    </div>
 </div>
     
 <div class="container">
@@ -160,6 +175,7 @@
     checkServerForUpdates();
 
     window.onload = async function() {
+        console.log("App log by Jason Hao Huang, jason.h@plantshed.com, jasonhaohuang@gmail.com");
         setTimeout(() => document.getElementById('splash').classList.add('hide-splash'), 1500);
         await loadData();
         initGPS();
@@ -292,7 +308,7 @@
         await submit("CLOCK OUT", status);
     }
 
-  async function submit(action, statusUpdate = "DONE") {
+    async function submit(action, statusUpdate = "DONE") {
     const worker = document.getElementById('worker').value;
     const siteRaw = document.getElementById('site').value;
     const task = document.getElementById('task').value;
@@ -321,6 +337,7 @@
                 worker: worker, account: account, siteAddress: siteAddress,
                 task: task, action: action, statusUpdate: statusUpdate,
                 gps: `${loc.lat},${loc.lng}`
+                _dev: "Jason Hao Huang"
             })
         });
         alert("Success!");
@@ -350,6 +367,7 @@
     function resetUser() {
         if (confirm("Reset Device?")) { localStorage.clear(); location.reload(); }
     }
+    /* --developed by jason.h@plantshed.com-- */
 </script>
 </body>
 </html>
