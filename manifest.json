@@ -1,7 +1,7 @@
 {
   "name": "PlantShed Field Log",
   "short_name": "PS Log",
-  "version": "1.25",
+  "version": "1.26",
   "description": "Field check-in system for PlantShed teams.",
   "icons": [
     {
