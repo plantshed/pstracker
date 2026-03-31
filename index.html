@@ -101,6 +101,47 @@
         .status-option.active { border-color: var(--success); background: #e8f5e9; color: #155724; font-weight: bold; }
         .menu-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 40px; }
         .btn-small { height: 50px; border: none; border-radius: 12px; color: white; font-weight: 700; font-size: 1rem; }
+        .logo-loader {
+                position: relative;
+                width: 80px;  /* Match your branding size */
+                height: 80px;
+                margin: 0 auto 20px auto;
+                overflow: hidden;
+            }
+
+            .logo-bg {
+                width: 100%;
+                height: 100%;
+                opacity: 0.15; /* Makes it look like a grey outline/shell */
+                filter: grayscale(1);
+            }
+
+            .logo-fill {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                
+                /* PlantShed Green Tint (Adjust if your SVG is already colored) */
+                filter: invert(0%) sepia(0%) saturate(0%) hue-rotate(86deg) brightness(100%) contrast(100%);
+                
+                /* The rising water animation */
+                animation: logo-fill-animation 2.5s ease-in-out infinite;
+            }
+
+            @keyframes logo-fill-animation {
+                0% {
+                    clip-path: inset(100% 0 0 0); /* Start at very bottom */
+                }
+                70% {
+                    clip-path: inset(0% 0 0 0);   /* Rise to the top */
+                }
+                100% {
+                    clip-path: inset(0% 0 0 0);   /* Hold full for a second */
+                    opacity: 0;                   /* Fade out to loop smoothly */
+                }
+            }
     </style>
     
     
@@ -347,44 +388,76 @@
     }
 
     async function submit(action, statusUpdate = "DONE") {
-        if (action === "CLOCK IN" && document.getElementById('inBtn').disabled) return;
-        const worker = document.getElementById('worker').value;
-        const siteRaw = document.getElementById('site').value;
-        const task = document.getElementById('task').value;
-        if (!worker || !siteRaw) return alert("Select Name and Site.");
+    if (action === "CLOCK IN" && document.getElementById('inBtn').disabled) return;
 
-        const [account, siteAddress] = siteRaw.split("|");
-        document.getElementById('gpsBox').innerText = "⌛ Logging...";
+    const worker = document.getElementById('worker').value;
+    const siteRaw = document.getElementById('site').value;
+    const task = document.getElementById('task').value;
+    if (!worker || !siteRaw) return alert("Select Name and Site.");
 
-        try {
+    const [account, siteAddress] = siteRaw.split("|");
+    
+    // --- SHOW LOADING ---
+    const overlay = document.getElementById('submitOverlay');
+    const loadingState = document.getElementById('loadingState');
+    const successState = document.getElementById('successState');
+    
+    document.getElementById('loadingText').innerText = (action === "CLOCK IN" ? "Checking in..." : "Checking out...");
+    overlay.style.display = "flex";
+    loadingState.style.display = "block";
+    successState.style.display = "none";
+
+    try {
+        let durationText = "";
+        
+        if (action === "CLOCK IN") {
+            const now = new Date();
             localStorage.setItem('ps_user', worker);
-            if (action === "CLOCK IN") {
-                const today = new Date().toLocaleDateString();
-                localStorage.setItem('ps_last_site', siteRaw);
-                localStorage.setItem('ps_last_task', task);
-                localStorage.setItem('ps_last_date', today);
-                toggleLock(true);
-            } else {
-                localStorage.removeItem('ps_last_site');
-                localStorage.removeItem('ps_last_task');
-                localStorage.removeItem('ps_last_date');
-                toggleLock(false);
+            localStorage.setItem('ps_last_site', siteRaw);
+            localStorage.setItem('ps_last_task', task);
+            localStorage.setItem('ps_last_date', now.toLocaleDateString());
+            localStorage.setItem('ps_start_ms', now.getTime()); // For time calc
+        } else {
+            // Calculate Total Time
+            const startMs = localStorage.getItem('ps_start_ms');
+            if (startMs) {
+                const diff = Date.now() - parseInt(startMs);
+                const hours = Math.floor(diff / 3600000);
+                const mins = Math.floor((diff % 3600000) / 60000);
+                durationText = `Total time: ${hours}h ${mins}m`;
             }
+            // Clear specific job data but keep user
+            localStorage.removeItem('ps_last_site');
+            localStorage.removeItem('ps_last_task');
+            localStorage.removeItem('ps_last_date');
+            localStorage.removeItem('ps_start_ms');
+        }
 
-            await fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: JSON.stringify({
-                    worker: worker, account: account, siteAddress: siteAddress,
-                    task: task, action: action, statusUpdate: statusUpdate,
-                    gps: `${loc.lat},${loc.lng}`,
-                    _dev: "Jason Hao Huang"
-                })
-            });
-            alert("Success!");
-            location.reload();
-        } catch (e) { alert("Error!"); location.reload(); }
+        // --- PING SERVER ---
+        await fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({
+                worker: worker, account: account, siteAddress: siteAddress,
+                task: task, action: action, statusUpdate: statusUpdate,
+                gps: `${loc.lat},${loc.lng}`,
+                _dev: "Jason Hao Huang"
+            })
+        });
+
+        // --- SHOW SUCCESS SUMMARY ---
+        loadingState.style.display = "none";
+        successState.style.display = "block";
+        
+        document.getElementById('successAction').innerText = (action === "CLOCK IN" ? "Checked in at" : "Checked out at");
+        document.getElementById('successDetail').innerHTML = `<strong>${account}</strong><br>${siteAddress}`;
+        document.getElementById('totalTime').innerText = durationText;
+
+    } catch (e) {
+        overlay.style.display = "none";
+        alert("Connection Error. Please try again.");
     }
+}       
 
     function getDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3;
@@ -408,7 +481,28 @@
     function resetUser() {
         if (confirm("Reset Device?")) { localStorage.clear(); location.reload(); }
     }
-    /*--developed by jason.h@plantshed.com--*/
+    //--developed by jason.h@plantshed.com--
 </script>
+
+<div id="submitOverlay" style="display:none; position:fixed; inset:0; background:white; z-index:30000; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px;">
+    
+    <div id="loadingState">
+    <div class="logo-loader">
+        <img src="logomark.svg" class="logo-bg">
+        <img src="logomark.svg" class="logo-fill">
+    </div>
+    <h2 id="loadingText" style="color:#404041;">Logging...</h2>
+</div>
+    <div id="successState" style="display:none; width:100%;">
+        <div style="color:var(--success); font-size:4rem; margin-bottom:10px;">✓</div>
+        <h2 id="successAction" style="margin-bottom:5px;">Action Complete</h2>
+        <p id="successDetail" style="font-size:1.1rem; color:#444; margin:10px 0; line-height:1.4;"></p>
+        <p id="totalTime" style="font-weight:bold; color:var(--primary); font-size:1.2rem; margin-top:10px;"></p>
+        
+        <button onclick="location.reload()" style="margin-top:40px; width:100%; height:60px; border:none; border-radius:12px; background:var(--primary); color:white; font-size:1.1rem; font-weight:600;">
+            Tap to continue >
+        </button>
+    </div>
+</div>
 </body>
 </html>
