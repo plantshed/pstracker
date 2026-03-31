@@ -195,7 +195,6 @@
             }
         } catch (err) { console.log("Update check skipped"); }
     }
-    // Run once on load
     checkServerForUpdates();
 
     window.onload = async function() {
@@ -205,27 +204,33 @@
         initGPS();
     };
 
-async function loadData() {
+    async function loadData() {
         try {
             const response = await fetch(SCRIPT_URL);
             const data = await response.json();
-            // ... (keep employee loading logic same)
+            
+            // Restore Employee Loading
+            const workerSelect = document.getElementById('worker');
+            workerSelect.innerHTML = '<option value="" disabled selected>Select Name</option>';
+            data.employees.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = opt.innerText = name;
+                workerSelect.appendChild(opt);
+            });
+            clientList = data.clients; 
 
             const savedUser = localStorage.getItem('ps_user');
             if (savedUser) workerSelect.value = savedUser;
 
-            // --- DATE PERSISTENCE FIX ---
             const savedSite = localStorage.getItem('ps_last_site');
             const savedTask = localStorage.getItem('ps_last_task');
             const savedDate = localStorage.getItem('ps_last_date');
             const today = new Date().toLocaleDateString();
 
             if (savedSite && savedDate === today) {
-                // It's a real active job from TODAY
                 if (savedTask) document.getElementById('task').value = savedTask;
                 toggleLock(true);
             } else {
-                // It's old data from yesterday or earlier - Wipe it!
                 localStorage.removeItem('ps_last_site');
                 localStorage.removeItem('ps_last_task');
                 localStorage.removeItem('ps_last_date');
@@ -234,90 +239,83 @@ async function loadData() {
         } catch (e) { console.error("Load failed", e); }
     }
 
-   function toggleLock(shouldLock) {
-    const ids = ['worker', 'site', 'task'];
-    const inBtn = document.getElementById('inBtn');
-    
-    ids.forEach(id => {
-        document.getElementById(id).disabled = shouldLock;
-    });
+    function toggleLock(shouldLock) {
+        const ids = ['worker', 'site', 'task'];
+        const inBtn = document.getElementById('inBtn');
+        const footer = document.querySelector('.footer');
+        
+        ids.forEach(id => {
+            document.getElementById(id).disabled = shouldLock;
+        });
 
-    // Disable Check In button if already clocked in
-    if (shouldLock) {
-        inBtn.disabled = true;
-        inBtn.style.opacity = "0.3";
-    } else {
-        // Only re-enable if GPS is ready (handled by initGPS)
-        if (loc) inBtn.disabled = false;
-    }
-}
-
-   function initGPS() {
-    navigator.geolocation.watchPosition((pos) => {
-        const acc = Math.round(pos.coords.accuracy);
-        loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        const status = document.getElementById('gpsBox');
-        const isLocked = document.getElementById('worker').disabled;
-
-        if (acc <= 150) {
-            status.innerHTML = `✅ Location ready`;
-            status.className = "gps-status ready";
-            if (!isLocked) {
-                document.getElementById('inBtn').disabled = false;
-                document.getElementById('inBtn').style.opacity = "1";
-            }
+        if (shouldLock) {
+            inBtn.style.display = "none";
+            footer.classList.add('single-btn');
         } else {
-            status.innerHTML = `🛰️ Searching... (${acc}m)`;
-            if (!isLocked) {
-                document.getElementById('inBtn').disabled = true;
-                document.getElementById('inBtn').style.opacity = "0.3";
+            inBtn.style.display = "block";
+            footer.classList.remove('single-btn');
+            if (!loc) {
+                inBtn.disabled = true;
+                inBtn.style.opacity = "0.3";
             }
         }
-        
-        // REINFORCE: Out button is always ready for a result ping
         document.getElementById('outBtn').disabled = false;
         document.getElementById('outBtn').style.opacity = "1";
-        
-        updateNearbySites(); 
-    }, (err) => {
-        document.getElementById('gpsBox').innerText = "❌ GPS blocked!";
-        document.getElementById('outBtn').disabled = false;
-    }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
-}
+    }
+
+    function initGPS() {
+        navigator.geolocation.watchPosition((pos) => {
+            const acc = Math.round(pos.coords.accuracy);
+            loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            const status = document.getElementById('gpsBox');
+            const isLocked = document.getElementById('worker').disabled;
+
+            if (acc <= 150) {
+                status.innerHTML = `✅ Location ready`;
+                status.className = "gps-status ready";
+                if (!isLocked) {
+                    document.getElementById('inBtn').disabled = false;
+                    document.getElementById('inBtn').style.opacity = "1";
+                }
+            } else {
+                status.innerHTML = `🛰️ Searching... (${acc}m)`;
+                if (!isLocked) {
+                    document.getElementById('inBtn').disabled = true;
+                    document.getElementById('inBtn').style.opacity = "0.3";
+                }
+            }
+            document.getElementById('outBtn').disabled = false;
+            updateNearbySites(); 
+        }, (err) => {
+            document.getElementById('gpsBox').innerText = "❌ GPS blocked!";
+        }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
+    }
 
     function updateNearbySites() {
-    if (!loc || !clientList.length) return;
-    const siteSelect = document.getElementById('site');
-    const savedSite = localStorage.getItem('ps_last_site');
-    
-    // NEW: If the user has ALREADY picked a site and is just 
-    // waiting to hit "In", don't let the GPS refresh wipe the choice.
-    if (siteSelect.value !== "" && !siteSelect.disabled) {
-        return; 
-    }
-    
-    // If locked in (already clocked in), keep the saved site visible
-    if (savedSite && siteSelect.disabled) {
-        siteSelect.innerHTML = `<option value="${savedSite}" selected>${savedSite.split('|')[0]}</option>`;
-        syncAddressLabel();
-        return;
-    }
+        if (!loc || !clientList.length) return;
+        const siteSelect = document.getElementById('site');
+        const savedSite = localStorage.getItem('ps_last_site');
+        if (siteSelect.value !== "" && !siteSelect.disabled) return; 
+        
+        if (savedSite && siteSelect.disabled) {
+            siteSelect.innerHTML = `<option value="${savedSite}" selected>${savedSite.split('|')[0]}</option>`;
+            syncAddressLabel();
+            return;
+        }
 
-    const nearby = clientList.filter(site => getDistance(loc.lat, loc.lng, site.lat, site.lng) <= 150);
-    
-    // Only rebuild the list if it's currently empty or showing the prompt
-    if (siteSelect.value === "") {
-        siteSelect.innerHTML = '<option value="" disabled selected>Select Nearby Client</option>';
-        nearby.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c.account + "|" + c.address;
-            opt.innerText = c.account; 
-            if (opt.value === savedSite) opt.selected = true;
-            siteSelect.appendChild(opt);
-        });
-        syncAddressLabel();
+        const nearby = clientList.filter(site => getDistance(loc.lat, loc.lng, site.lat, site.lng) <= 150);
+        if (siteSelect.value === "") {
+            siteSelect.innerHTML = '<option value="" disabled selected>Select Nearby Client</option>';
+            nearby.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.account + "|" + c.address;
+                opt.innerText = c.account; 
+                if (opt.value === savedSite) opt.selected = true;
+                siteSelect.appendChild(opt);
+            });
+            syncAddressLabel();
+        }
     }
-}
 
     function syncAddressLabel() {
         const val = document.getElementById('site').value;
@@ -348,48 +346,45 @@ async function loadData() {
         await submit("CLOCK OUT", status);
     }
 
-  async function submit(action, statusUpdate = "DONE") {
-    if (action === "CLOCK IN" && document.getElementById('inBtn').disabled) return;
+    async function submit(action, statusUpdate = "DONE") {
+        if (action === "CLOCK IN" && document.getElementById('inBtn').disabled) return;
+        const worker = document.getElementById('worker').value;
+        const siteRaw = document.getElementById('site').value;
+        const task = document.getElementById('task').value;
+        if (!worker || !siteRaw) return alert("Select Name and Site.");
 
-    const worker = document.getElementById('worker').value;
-    const siteRaw = document.getElementById('site').value;
-    const task = document.getElementById('task').value;
+        const [account, siteAddress] = siteRaw.split("|");
+        document.getElementById('gpsBox').innerText = "⌛ Logging...";
 
-    if (!worker || !siteRaw) return alert("Select Name and Site.");
+        try {
+            localStorage.setItem('ps_user', worker);
+            if (action === "CLOCK IN") {
+                const today = new Date().toLocaleDateString();
+                localStorage.setItem('ps_last_site', siteRaw);
+                localStorage.setItem('ps_last_task', task);
+                localStorage.setItem('ps_last_date', today);
+                toggleLock(true);
+            } else {
+                localStorage.removeItem('ps_last_site');
+                localStorage.removeItem('ps_last_task');
+                localStorage.removeItem('ps_last_date');
+                toggleLock(false);
+            }
 
-    const [account, siteAddress] = siteRaw.split("|");
-    document.getElementById('gpsBox').innerText = "⌛ Logging...";
-
-    try {
-        localStorage.setItem('ps_user', worker);
-        if (action === "CLOCK IN") {
-            const today = new Date().toLocaleDateString();
-            localStorage.setItem('ps_last_site', siteRaw);
-            localStorage.setItem('ps_last_task', task);
-            localStorage.setItem('ps_last_date', today); // Save the date!
-            toggleLock(true);
-        } else {
-            // Clock out clears everything anyway
-            localStorage.removeItem('ps_last_site');
-            localStorage.removeItem('ps_last_task');
-            localStorage.removeItem('ps_last_date');
-            toggleLock(false);
-        }
-
-        await fetch(SCRIPT_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            body: JSON.stringify({
-                worker: worker, account: account, siteAddress: siteAddress,
-                task: task, action: action, statusUpdate: statusUpdate,
-                gps: `${loc.lat},${loc.lng}`,
-                _dev: "Jason Hao Huang"
-            })
-        });
-        alert("Success!");
-        location.reload();
-    } catch (e) { alert("Error!"); location.reload(); }
-}
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({
+                    worker: worker, account: account, siteAddress: siteAddress,
+                    task: task, action: action, statusUpdate: statusUpdate,
+                    gps: `${loc.lat},${loc.lng}`,
+                    _dev: "Jason Hao Huang"
+                })
+            });
+            alert("Success!");
+            location.reload();
+        } catch (e) { alert("Error!"); location.reload(); }
+    }
 
     function getDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3;
@@ -398,44 +393,14 @@ async function loadData() {
         const a = Math.sin(dLat / 2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
         return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
     }
-function toggleLock(shouldLock) {
-    const ids = ['worker', 'site', 'task'];
-    const inBtn = document.getElementById('inBtn');
-    const outBtn = document.getElementById('outBtn');
-    const footer = document.querySelector('.footer');
-    
-    ids.forEach(id => {
-        document.getElementById(id).disabled = shouldLock;
-    });
 
-    if (shouldLock) {
-        // SUCCESSFUL IN: Hide the "In" button to clean up the UI
-        inBtn.style.display = "none";
-        footer.classList.add('single-btn');
-    } else {
-        // NOT LOGGED IN: Show both
-        inBtn.style.display = "block";
-        footer.classList.remove('single-btn');
-        
-        if (!loc) {
-            inBtn.disabled = true;
-            inBtn.style.opacity = "0.3";
-        }
-    }
-    
-    // SAFETY: Check Out is NEVER hidden or disabled here
-    // This allows the "MISSING IN" logic in Code.gs to work
-    outBtn.style.display = "block";
-    outBtn.disabled = false;
-    outBtn.style.opacity = "1";
-}
     document.getElementById('inBtn').onclick = () => submit("CLOCK IN");
     document.getElementById('outBtn').onclick = () => document.getElementById('outMenu').style.display = 'flex';
     document.getElementById('site').addEventListener('change', () => {
-    syncAddressLabel();
-    const val = document.getElementById('site').value;
-    if (val) localStorage.setItem('ps_last_site', val);
-});
+        syncAddressLabel();
+        const val = document.getElementById('site').value;
+        if (val) localStorage.setItem('ps_last_site', val);
+    });
     document.getElementById('task').addEventListener('change', function() {
         localStorage.setItem('ps_last_task', this.value);
     });
@@ -443,7 +408,7 @@ function toggleLock(shouldLock) {
     function resetUser() {
         if (confirm("Reset Device?")) { localStorage.clear(); location.reload(); }
     }
-    /* --developed by jason.h@plantshed.com-- */
+    /*--developed by jason.h@plantshed.com--*/
 </script>
 </body>
 </html>
