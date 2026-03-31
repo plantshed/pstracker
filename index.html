@@ -61,11 +61,35 @@
         .gps-status { margin: 12px 40px; transform: translate(0, 10px); padding: 7px; border-radius: 12px; text-align: center; font-weight: bold; font-size: 0.75rem; background: #eee; color: #666; }
         .ready { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
 
-        .footer { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 10px; }
-        .btn { height: 100px; border: none; border-radius: 12px; color: white; font-size: 1.5rem; font-weight: 400; }
+       .footer { 
+        margin-top: auto; 
+        display: grid; 
+        grid-template-columns: 1fr 1fr; /* Two buttons side-by-side by default */
+        gap: 12px; 
+        padding-bottom: 10px; 
+    }
+
+    /* This class is added via JS when a successful Check-In happens */
+    .footer.single-btn {
+        grid-template-columns: 1fr;
+    }
+
+    .btn { 
+        height: 100px; 
+        border: none; 
+        border-radius: 12px; 
+        color: white; 
+        font-size: 1.5rem; 
+        font-weight: 400; 
+        transition: all 0.2s ease;
+    }
+
+    button:disabled { 
+        opacity: 0.3; 
+        pointer-events: none; /* Physical touch block */
+    }
         .btn-in { background: var(--success); }
         .btn-out { background: var(--danger); }
-        button:disabled { opacity: 0.3; }
 
         #resetLink { text-align: center; font-size: 10px; color: #bbb; margin-top: 10px; padding-bottom: 15px; text-decoration: underline; cursor: pointer; }
 
@@ -181,27 +205,32 @@
         initGPS();
     };
 
-    async function loadData() {
+async function loadData() {
         try {
             const response = await fetch(SCRIPT_URL);
             const data = await response.json();
-            const workerSelect = document.getElementById('worker');
-            workerSelect.innerHTML = '<option value="" disabled selected>Select Name</option>';
-            data.employees.forEach(name => {
-                const opt = document.createElement('option');
-                opt.value = opt.innerText = name;
-                workerSelect.appendChild(opt);
-            });
-            clientList = data.clients; 
-            
+            // ... (keep employee loading logic same)
+
             const savedUser = localStorage.getItem('ps_user');
             if (savedUser) workerSelect.value = savedUser;
 
+            // --- DATE PERSISTENCE FIX ---
             const savedSite = localStorage.getItem('ps_last_site');
             const savedTask = localStorage.getItem('ps_last_task');
-            if (savedTask) document.getElementById('task').value = savedTask;
-            
-            if (savedSite) toggleLock(true);
+            const savedDate = localStorage.getItem('ps_last_date');
+            const today = new Date().toLocaleDateString();
+
+            if (savedSite && savedDate === today) {
+                // It's a real active job from TODAY
+                if (savedTask) document.getElementById('task').value = savedTask;
+                toggleLock(true);
+            } else {
+                // It's old data from yesterday or earlier - Wipe it!
+                localStorage.removeItem('ps_last_site');
+                localStorage.removeItem('ps_last_task');
+                localStorage.removeItem('ps_last_date');
+                toggleLock(false); 
+            }
         } catch (e) { console.error("Load failed", e); }
     }
 
@@ -223,28 +252,38 @@
     }
 }
 
-    function initGPS() {
-        navigator.geolocation.watchPosition((pos) => {
-            const acc = Math.round(pos.coords.accuracy);
-            loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            const status = document.getElementById('gpsBox');
-            
-            if (acc <= 150) {
-                status.innerHTML = `✅ Location ready`;
-                status.className = "gps-status ready";
+   function initGPS() {
+    navigator.geolocation.watchPosition((pos) => {
+        const acc = Math.round(pos.coords.accuracy);
+        loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        const status = document.getElementById('gpsBox');
+        const isLocked = document.getElementById('worker').disabled;
+
+        if (acc <= 150) {
+            status.innerHTML = `✅ Location ready`;
+            status.className = "gps-status ready";
+            if (!isLocked) {
                 document.getElementById('inBtn').disabled = false;
-            } else {
-                status.innerHTML = `🛰️ Searching... (${acc}m)`;
-                document.getElementById('inBtn').disabled = true;
+                document.getElementById('inBtn').style.opacity = "1";
             }
-            // Lenient Out
-            document.getElementById('outBtn').disabled = false;
-            updateNearbySites(); 
-        }, (err) => {
-            document.getElementById('gpsBox').innerText = "❌ GPS blocked!";
-            document.getElementById('outBtn').disabled = false;
-        }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
-    }
+        } else {
+            status.innerHTML = `🛰️ Searching... (${acc}m)`;
+            if (!isLocked) {
+                document.getElementById('inBtn').disabled = true;
+                document.getElementById('inBtn').style.opacity = "0.3";
+            }
+        }
+        
+        // REINFORCE: Out button is always ready for a result ping
+        document.getElementById('outBtn').disabled = false;
+        document.getElementById('outBtn').style.opacity = "1";
+        
+        updateNearbySites(); 
+    }, (err) => {
+        document.getElementById('gpsBox').innerText = "❌ GPS blocked!";
+        document.getElementById('outBtn').disabled = false;
+    }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
+}
 
     function updateNearbySites() {
     if (!loc || !clientList.length) return;
@@ -324,13 +363,17 @@
     try {
         localStorage.setItem('ps_user', worker);
         if (action === "CLOCK IN") {
+            const today = new Date().toLocaleDateString();
             localStorage.setItem('ps_last_site', siteRaw);
             localStorage.setItem('ps_last_task', task);
-            toggleLock(true); // Lock dropdowns AND Check In button
+            localStorage.setItem('ps_last_date', today); // Save the date!
+            toggleLock(true);
         } else {
+            // Clock out clears everything anyway
             localStorage.removeItem('ps_last_site');
             localStorage.removeItem('ps_last_task');
-            toggleLock(false); // Unlock everything
+            localStorage.removeItem('ps_last_date');
+            toggleLock(false);
         }
 
         await fetch(SCRIPT_URL, {
@@ -355,7 +398,37 @@
         const a = Math.sin(dLat / 2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
         return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
     }
+function toggleLock(shouldLock) {
+    const ids = ['worker', 'site', 'task'];
+    const inBtn = document.getElementById('inBtn');
+    const outBtn = document.getElementById('outBtn');
+    const footer = document.querySelector('.footer');
+    
+    ids.forEach(id => {
+        document.getElementById(id).disabled = shouldLock;
+    });
 
+    if (shouldLock) {
+        // SUCCESSFUL IN: Hide the "In" button to clean up the UI
+        inBtn.style.display = "none";
+        footer.classList.add('single-btn');
+    } else {
+        // NOT LOGGED IN: Show both
+        inBtn.style.display = "block";
+        footer.classList.remove('single-btn');
+        
+        if (!loc) {
+            inBtn.disabled = true;
+            inBtn.style.opacity = "0.3";
+        }
+    }
+    
+    // SAFETY: Check Out is NEVER hidden or disabled here
+    // This allows the "MISSING IN" logic in Code.gs to work
+    outBtn.style.display = "block";
+    outBtn.disabled = false;
+    outBtn.style.opacity = "1";
+}
     document.getElementById('inBtn').onclick = () => submit("CLOCK IN");
     document.getElementById('outBtn').onclick = () => document.getElementById('outMenu').style.display = 'flex';
     document.getElementById('site').addEventListener('change', () => {
